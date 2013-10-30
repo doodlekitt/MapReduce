@@ -1,9 +1,9 @@
 import java.io.*;
 import java.net.Socket;
 
-public class Message  implements Serializable {
+public class Message implements Serializable {
 
-    public static void send(Object message, Socket socket) throws IOException {
+    public static void send(Socket socket, Object message) throws IOException {
         ObjectOutputStream os =
             new ObjectOutputStream(socket.getOutputStream());
         os.flush();
