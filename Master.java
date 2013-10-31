@@ -30,14 +30,19 @@ public class Master {
 
         while(sc.hasNext()) {
             try {
-                String hostname = sc.next();
-                int port = sc.nextInt();
-                Socket socket = new Socket(hostname, port);
-                nodes.put(i, socket);
-	        i++;
+                // Discard the first line, as it has info on master
+                if(i == 0) {
+                    sc.nextLine();
+                } else {
+                    String hostname = sc.next();
+                    int port = sc.nextInt();
+                    Socket socket = new Socket(hostname, port);
+                    nodes.put(i, socket);
+	        }
             } catch (IOException e) {
                 System.out.println(e);
             }
+            i++;
         }
 
     }
