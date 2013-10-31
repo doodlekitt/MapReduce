@@ -4,10 +4,41 @@ import java.net.*;
 import java.util.*;
 
 public class Master {
+
     private static Hashtable<Integer, Socket> nodes =
         new Hashtable<Integer, Socket>();
 
     public static void main(String[] args) {
+        if(args.length != 1) {
+            String error = "Expects command of the form:\n" +
+                "Master <filename>\n" +
+                "Where <filename> contains information on the Nodes\n";
+            System.out.print(error);
+            return;
+        }
+
+        // Parse input file
+        // Assumes that all nodes are already running and listening for master
+        Scanner sc = null;
+        try {
+            sc = new Scanner(new File(args[1]));
+        } catch (FileNotFoundException e) {
+            System.out.println(e);
+            return;
+        }
+        int i = 0;
+
+        while(sc.hasNext()) {
+            try {
+                String hostname = sc.next();
+                int port = sc.nextInt();
+                Socket socket = new Socket(hostname, port);
+                nodes.put(i, socket);
+	        i++;
+            } catch (IOException e) {
+                System.out.println(e);
+            }
+        }
 
     }
 
