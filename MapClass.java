@@ -2,5 +2,7 @@
 
 public interface MapClass extends java.io.Serializable 
 {
-    public String map(String input);
+    public Object map(String input);
+    public Object combine(String input);
+    public Object reduce(String input);
 }
