@@ -5,11 +5,13 @@ JC = javac
 	$(JC) $(JFLAGS) $*.java
 
 CLASSES = \
+        MapClass.java \
+        Task.java \
 	Message.java \
         Ping.java \
+        Pong.java \
         Master.java \
         Node.java \
-	MapClass.java \
 
 default: classes
 

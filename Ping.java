@@ -4,8 +4,7 @@ public class Ping extends Message {
     }
 
     private Command command;
-    private MapClass mapper;
-    private String filepath;
+    private Task task;
 
     // Constructors
     // For QUERY:
@@ -13,10 +12,9 @@ public class Ping extends Message {
         this.command = command;
     }
 
-    // For MAP
-    Ping(Command command, MapClass mapper, String filepath) {
+    // For map, reduce
+    Ping(Command command, Task task) {
         this.command = command;
-        this.mapper = mapper;
-        this.filepath = filepath;
+        this.task = task;
     }
 }
