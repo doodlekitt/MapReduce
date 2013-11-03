@@ -45,6 +45,63 @@ public class Master {
             i++;
         }
 
+	// Listen to user commands
+	try{
+	    BufferedReader br = 
+		new BufferedReader(new InputStreamReader(System.in));
+	    String command = null;
+	    String[] commandargs = null;
+	    while(true){
+		System.out.print(" > ");
+		command = br.readLine();
+
+		commandargs = command.split();
+		if(command.startsWith("help")){
+		    String help = "";
+		    help += "Available Commands:\n";
+		    help += "quit: quit the network\n";
+		    help += "list: lists files in distributed file system\n";
+		    help += "mapreduce: starts new mapreduce\n";
+		    System.out.print(help);
+		}
+		else if(command.startsWith("quit")){
+		    break;
+		}
+		else if(command.startsWith("list")){
+		// TODO
+
+		}
+		else if(command.startsWith("mapreduce")){
+		    if(commandargs.length < 4){
+			System.out.println("Expecting command of form:");
+			System.out.println("mapreduce <MapClass> <recordlength>
+						<files>");
+		    }else{
+		    	// Check if the class is valid
+			Class<?> c = Class.forName(commandargs[1]);
+			
+			// Extract record length in bytes
+			int reclen = Integer.valueOf(commandargs[2]).intValue();
+		
+			// Extract file argument array
+			String[] files = Arrays.copyOfRange(commandargs, 3, 
+					commandargs.length);	
+
+			// Make new MapClass object
+			MapClass mapper = c.newInstance();
+
+			// TODO: Make it mapreduce using the given info
+		}
+		else{
+		    System.out.print("Invalid command");
+		}
+	    }
+
+	} catch (Exception e) {
+	    System.out.println(e);
+	}
+
+
     }
 
     private static class Heartbeat implements Runnable {
