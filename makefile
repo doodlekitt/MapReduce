@@ -10,6 +10,7 @@ CLASSES = \
 	Message.java \
         Ping.java \
         Pong.java \
+        DistFileSystem.java \
         Master.java \
         Node.java \
 
