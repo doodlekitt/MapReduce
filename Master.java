@@ -11,11 +11,11 @@ public class Master {
 
     private static class NodeInfo {
         public Socket socket;
-        public Status status;
+        public List<Task> tasks;
 
         NodeInfo(Socket socket) {
             this.socket = socket;
-            this.status = Status.FREE; // New Nodes default to FREE
+            this.tasks = new LinkedList<Task>();
         }
     }
 
