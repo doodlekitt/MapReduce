@@ -9,6 +9,7 @@ CLASSES = \
         Ping.java \
         Master.java \
         Node.java \
+	MapClass.java \
 
 default: classes
 
