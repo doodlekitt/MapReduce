@@ -5,8 +5,22 @@ import java.util.*;
 
 public class Master {
 
-    private static Hashtable<Integer, Socket> nodes =
-        new Hashtable<Integer, Socket>();
+    public enum Status {
+        FREE, MAP, REDUCE;
+    }
+
+    private static class NodeInfo {
+        public Socket socket;
+        public Status status;
+
+        NodeInfo(Socket socket) {
+            this.socket = socket;
+            this.status = Status.FREE; // New Nodes default to FREE
+        }
+    }
+
+    private static Hashtable<Integer, NodeInfo> nodes =
+        new Hashtable<Integer, NodeInfo>();
 
     public static void main(String[] args) {
         if(args.length != 1) {
@@ -37,7 +51,7 @@ public class Master {
                     String hostname = sc.next();
                     int port = sc.nextInt();
                     Socket socket = new Socket(hostname, port);
-                    nodes.put(i, socket);
+                    nodes.put(i, new NodeInfo(socket));
 	        }
             } catch (IOException e) {
                 System.out.println(e);
@@ -55,28 +69,24 @@ public class Master {
 		System.out.print(" > ");
 		command = br.readLine();
 
-		commandargs = command.split();
+		commandargs = command.split(" ");
 		if(command.startsWith("help")){
-		    String help = "";
-		    help += "Available Commands:\n";
+		    String help = "Available Commands:\n";
 		    help += "quit: quit the network\n";
 		    help += "list: lists files in distributed file system\n";
 		    help += "mapreduce: starts new mapreduce\n";
 		    System.out.print(help);
-		}
-		else if(command.startsWith("quit")){
+		} else if(command.startsWith("quit")){
 		    break;
-		}
-		else if(command.startsWith("list")){
-		// TODO
+		} else if(command.startsWith("list")){
+		    // TODO
 
-		}
-		else if(command.startsWith("mapreduce")){
+		} else if(command.startsWith("mapreduce")){
 		    if(commandargs.length < 4){
 			System.out.println("Expecting command of form:");
-			System.out.println("mapreduce <MapClass> <recordlength>
-						<files>");
-		    }else{
+			System.out.println("mapreduce <MapClass> <recordlength>"
+                                           + " <files>");
+		    } else{
 		    	// Check if the class is valid
 			Class<?> c = Class.forName(commandargs[1]);
 			
@@ -88,11 +98,11 @@ public class Master {
 					commandargs.length);	
 
 			// Make new MapClass object
-			MapClass mapper = c.newInstance();
+			MapClass mapper = (MapClass)c.newInstance();
 
 			// TODO: Make it mapreduce using the given info
-		}
-		else{
+		    }
+		} else {
 		    System.out.print("Invalid command");
 		}
 	    }
@@ -117,8 +127,8 @@ public class Master {
             while(isRunning) {
                 for(Integer key : nodes.keySet()) {
                     try{
-                        Socket socket = nodes.get(key);
-                        Message.send(socket, new Message());
+                        Socket socket = nodes.get(key).socket;
+                        Message.send(socket, new Ping(Ping.Command.QUERY));
                         reply = (Message)Message.recieve(socket);
                     } catch(IOException e) {
                         System.out.println(e);

@@ -8,19 +8,18 @@ public class Node {
     public static void main(String[] args) {
         if(args.length != 1) {
             String error = "Expects command of the form:\n" +
-                "Master <filename>\n" +
-                "Where <filename> contains information on the Nodes\n";
+                "Node <port>\n" +
+                "Where <port> is the port it is listening on \n";
             System.out.print(error);
             return;
         }
 
-        Scanner sc = null;
+        int port = Integer.valueOf(args[0]).intValue();
+        ServerSocket server = null;
         Socket master = null;
         try {
-            sc = new Scanner(new File(args[1]));
-            String hostname = sc.next();
-            int port = sc.nextInt();
-            master = new Socket(hostname, port);
+            server = new ServerSocket(port);
+            master = server.accept();
         } catch (Exception e) {
             System.out.println(e);
             return;
@@ -35,7 +34,6 @@ public class Node {
 // 4) end of record range
 // 5) path to output file to append results to
 
-// SYNCHRONIZE?
 public void mapper(MapClass func, String infilepath, int start, int end,
                    String outfilepath) throws FileNotFoundException, IOException
 {
@@ -51,7 +49,7 @@ public void mapper(MapClass func, String infilepath, int start, int end,
     while(input != null){
         if(input == null) break;
 
-        String result = func.map(input);
+        Object result = func.map(input);
         out.writeObject(result);
         out.flush();
         input = in.readLine();
