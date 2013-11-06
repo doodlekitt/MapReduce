@@ -1,14 +1,23 @@
+import java.io.*;
+import java.util.*;
+
 public class DistFileSystem {
 
     private HashMap<Integer, List<String>> files =  new HashMap<Integer, List<String>>();
 
-    int recordsperfile = 100;
+    private int recordsperfile;
+    private String relativefilepath;
 
-    public ListFileLocations(String filename) {
-
+    DistFileSystem(String rfp, int rpf) {
+        this.relativefilepath = rfp;
+        this.recordsperfile = rpf;
     }
 
-    public SplitFile(String filepath, int recordsize) throws FileNotFoundException {
+    public List<Node> ListFileLocations(String filename) {
+        return null;
+    }
+
+    public void SplitFile(String filepath, int recordsize) throws FileNotFoundException {
         File file = new File(filepath);
     }
 }
