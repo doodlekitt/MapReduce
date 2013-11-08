@@ -210,6 +210,39 @@ public class DistFileSystem {
     // Assumes: filename is located at "relativefilepath"
     // Guarantees: new file will be saved at "relativefilepath"
     public void CopyFile(String filename, Integer source, Integer target) {
+	NodeInfo src = nodes.get(source);
+	NodeInfo tgt = nodes.get(target); 
+
+	// Check valid network nodes
+	if(src == null || tgt == null){
+	    System.out.println("Invalid source or target");
+	    break;
+	}
+	Socket sr = src.socket;
+	Socket tg = tgt.socket;
+	String srcaddr = sr.getRemoteSocketAddress().toString();
+	String tgtaddr = tg.getRemoteSocketAddress().toString();
+
+	String FromPath = "//" + srcaddr + "//" + relativefilepath + filename; 
+	String ToPath = "//" + tgtaddr + "//"+ relativefilepath+filename;
+
+	try{
+	    File newF = new File(ToPath);
+	    FileOutputStream fout = new FileOutputStream(ToPath, true);
+	    fout.flush();
+	    FileInputStream fin = new FileInputStream(FromPath);
+	    PrintStream out = new PrintStream(fout);
+	} catch (Exception e) {
+	    System.out.println(e);
+	}
+
+	String line = null;
+	while(true){
+	    line = fin.readLine();
+	    if(line == null) break;
+	    else
+	    	out.println(line);
+	}
 
     }
 
