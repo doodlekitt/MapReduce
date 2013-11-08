@@ -8,9 +8,14 @@ public class DistFileSystem {
     private int recordsperfile;
     private String relativefilepath;
 
-    DistFileSystem(String rfp, int rpf) {
+    DistFileSystem(Collection<Integer> nodes, String rfp, int rpf) {
         this.relativefilepath = rfp;
         this.recordsperfile = rpf;
+        List<String> files;
+        for(Integer node : nodes) {
+            files = new LinkedList<String>();
+            filemap.put(node, files);
+        }
     }
 
     public void Add (Integer node, String filename) {

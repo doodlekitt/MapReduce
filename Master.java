@@ -19,14 +19,19 @@ public class Master {
         }
     }
 
+    // Information about the nodes
     private static Hashtable<Integer, NodeInfo> nodes =
         new Hashtable<Integer, NodeInfo>();
+
+
+    // The distributed file system
+    private static DistFileSystem dfs;
 
     public static void main(String[] args) {
         if(args.length != 1) {
             String error = "Expects command of the form:\n" +
                 "Master <filename>\n" +
-                "Where <filename> contains information on the Nodes\n";
+                "Where <filename> is the config file\n";
             System.out.print(error);
             return;
         }
@@ -58,6 +63,10 @@ public class Master {
             }
             i++;
         }
+
+        // Initialize the Distributed File System
+        // Hard coding some of the parameters
+        dfs = new DistFileSystem(nodes.keySet(), "/tmp", 100);
 
 	// Listen to user commands
 	try{
@@ -138,4 +147,70 @@ public class Master {
             }
         }
     }
+
+public class DistFileSystem {
+
+    private HashMap<Integer, List<String>> filemap =  new HashMap<Integer, List<String>>();
+
+    private int recordsperfile;
+    private String relativefilepath;
+
+    DistFileSystem(Collection<Integer> nodes, String rfp, int rpf) {
+        this.relativefilepath = rfp;
+        this.recordsperfile = rpf;
+        List<String> files;
+        for(Integer node : nodes) {
+            files = new LinkedList<String>();
+            filemap.put(node, files);
+        }
+    }
+
+    public void Add (Integer node, String filename) {
+        List<String> files;
+        if(!filemap.containsKey(node)) {
+            files = new LinkedList<String>();
+            files.add(filename);
+            filemap.put(node, files);
+        } else {
+            files = filemap.get(node);
+            files.add(filename);
+            filemap.put(node, files);
+        }
+    }
+
+    public List<Integer> ListFileLocations(String filename) {
+        List<Integer> nodes = new LinkedList<Integer>();
+
+        for(Integer node : filemap.keySet()) {
+            if(filemap.get(node).contains(filename))
+                nodes.add(node);
+        }
+        return nodes;
+    }
+
+    public void SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
+        File infile = new File(filepath);
+        FileInputStream fis = new FileInputStream(infile);
+        String outfilepath = relativefilepath + filepath;
+        int i = 0;
+        while(fis.available() > 0) {
+            byte[] bytes = new byte[recordsize * recordsperfile];
+            File outfile = new File(outfilepath + i);
+            FileOutputStream fos = new FileOutputStream(outfile);
+            fos.write(bytes);
+            fos.close();
+            i++;
+        }
+        fis.close();
+    }
+}
+
+    // takes a filename, a source node (to copy from) and a target node
+    // (to copy to)
+    // Assumes: filename is located at "relativefilepath"
+    // Guarantees: new file will be saved at "relativefilepath"
+    public void CopyFile(String filename, Integer source, Integer target) {
+
+    }
+
 }
