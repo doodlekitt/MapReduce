@@ -218,7 +218,7 @@ public static class DistFileSystem {
 	    File newF = new File(ToPath);
 	    FileOutputStream fout = new FileOutputStream(ToPath, true);
 	    fout.flush();
-	    fin = new FileInputStream(FromPath);
+	    FileInputStream fin = new FileInputStream(FromPath);
 	    BufferedReader br = new BufferedReader(new InputStreamReader(fin));
 	    PrintStream out = new PrintStream(fout);
 
