@@ -219,11 +219,12 @@ public static class DistFileSystem {
 	    FileOutputStream fout = new FileOutputStream(ToPath, true);
 	    fout.flush();
 	    fin = new FileInputStream(FromPath);
+	    BufferedReader br = new BufferedReader(new InputStreamReader(fin));
 	    PrintStream out = new PrintStream(fout);
 
             String line = null;
             while(true){
-                line = fin.readLine();
+                line = br.readLine();
                 if(line == null) break;
                 else
                     out.println(line);
