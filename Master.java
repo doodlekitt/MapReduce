@@ -5,17 +5,19 @@ import java.util.*;
 
 public class Master {
 
-    public enum Status {
-        FREE, MAP, REDUCE;
-    }
-
     private static class NodeInfo {
+        public String host;
+        public int port;
         public Socket socket;
         public List<Task> tasks;
+        public List<String> files;
 
-        NodeInfo(Socket socket) {
+        NodeInfo(String host, int port, Socket socket) {
+            this.host = host;
+            this.port = port;
             this.socket = socket;
             this.tasks = new LinkedList<Task>();
+            this.files = new LinkedList<String>();
         }
     }
 
@@ -56,7 +58,7 @@ public class Master {
                     String hostname = sc.next();
                     int port = sc.nextInt();
                     Socket socket = new Socket(hostname, port);
-                    nodes.put(i, new NodeInfo(socket));
+                    nodes.put(i, new NodeInfo(hostname, port, socket));
 	        }
             } catch (IOException e) {
                 System.out.println(e);
@@ -66,7 +68,7 @@ public class Master {
 
         // Initialize the Distributed File System
         // Hard coding some of the parameters
-        dfs = new DistFileSystem(nodes.keySet(), "/tmp", 100);
+        dfs = new DistFileSystem("//tmp", 100);
 
 	// Listen to user commands
 	try{
@@ -148,44 +150,30 @@ public class Master {
         }
     }
 
-public class DistFileSystem {
-
-    private HashMap<Integer, List<String>> filemap =  new HashMap<Integer, List<String>>();
+public static class DistFileSystem {
 
     private int recordsperfile;
     private String relativefilepath;
 
-    DistFileSystem(Collection<Integer> nodes, String rfp, int rpf) {
+    DistFileSystem(String rfp, int rpf) {
         this.relativefilepath = rfp;
         this.recordsperfile = rpf;
-        List<String> files;
-        for(Integer node : nodes) {
-            files = new LinkedList<String>();
-            filemap.put(node, files);
-        }
     }
 
+    // Assumes 'node' is already in 'nodes'
     public void Add (Integer node, String filename) {
-        List<String> files;
-        if(!filemap.containsKey(node)) {
-            files = new LinkedList<String>();
-            files.add(filename);
-            filemap.put(node, files);
-        } else {
-            files = filemap.get(node);
-            files.add(filename);
-            filemap.put(node, files);
-        }
+        NodeInfo info = nodes.get(node);
+        info.files.add(filename);
     }
 
     public List<Integer> ListFileLocations(String filename) {
-        List<Integer> nodes = new LinkedList<Integer>();
+        List<Integer> nodelist = new LinkedList<Integer>();
 
-        for(Integer node : filemap.keySet()) {
-            if(filemap.get(node).contains(filename))
-                nodes.add(node);
+        for(Integer node : nodes.keySet()) {
+            if(nodes.get(node).files.contains(filename))
+                nodelist.add(node);
         }
-        return nodes;
+        return nodelist;
     }
 
     public void SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
@@ -203,21 +191,21 @@ public class DistFileSystem {
         }
         fis.close();
     }
-}
 
     // takes a filename, a source node (to copy from) and a target node
     // (to copy to)
     // Assumes: filename is located at "relativefilepath"
     // Guarantees: new file will be saved at "relativefilepath"
     public void CopyFile(String filename, Integer source, Integer target) {
-	NodeInfo src = nodes.get(source);
+	// Check valid network nodes
+        if(!(nodes.containsKey(source) && nodes.containsKey(target))) {
+            System.out.println("Invalid source or target");
+            return;
+        }
+
+        NodeInfo src = nodes.get(source);
 	NodeInfo tgt = nodes.get(target); 
 
-	// Check valid network nodes
-	if(src == null || tgt == null){
-	    System.out.println("Invalid source or target");
-	    break;
-	}
 	Socket sr = src.socket;
 	Socket tg = tgt.socket;
 	String srcaddr = sr.getRemoteSocketAddress().toString();
@@ -230,20 +218,20 @@ public class DistFileSystem {
 	    File newF = new File(ToPath);
 	    FileOutputStream fout = new FileOutputStream(ToPath, true);
 	    fout.flush();
-	    FileInputStream fin = new FileInputStream(FromPath);
+	    fin = new FileInputStream(FromPath);
 	    PrintStream out = new PrintStream(fout);
+
+            String line = null;
+            while(true){
+                line = fin.readLine();
+                if(line == null) break;
+                else
+                    out.println(line);
+            }
+
 	} catch (Exception e) {
 	    System.out.println(e);
 	}
-
-	String line = null;
-	while(true){
-	    line = fin.readLine();
-	    if(line == null) break;
-	    else
-	    	out.println(line);
-	}
-
     }
-
+}
 }
