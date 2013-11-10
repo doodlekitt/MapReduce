@@ -24,6 +24,23 @@ public class Node {
             System.out.println(e);
             return;
         }
+
+        Ping ping = null;
+        Pong response = null;
+        while(true) {
+            try {
+                ping = (Ping)Ping.recieve(master);
+                switch (ping.command()) {
+                    case QUERY: response = new Pong();
+                                break;
+                    case TASK: break;
+                    default: break;
+                }
+            } catch (IOException e) {
+                System.out.println(e);
+                return;    
+            }
+        }
     }
 
 // Takes as arguments

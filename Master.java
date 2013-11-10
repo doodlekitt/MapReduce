@@ -239,8 +239,13 @@ public static class DistFileSystem {
 
 	    NodeInfo tgt = nodes.get(target);
 	    Socket tg = tgt.socket;
-	    String tgtaddr = tg.getRemoteSocketAddress().toString();	
-	    ToPath = tgtaddr + relativefilepath + filename;
+	    String tgtaddr = tg.getRemoteSocketAddress().toString();
+
+            Scanner scanner = new Scanner(tgtaddr);
+            scanner.useDelimiter("/");
+            scanner.next();
+	
+	    ToPath = "ssh:////" + scanner.next() + relativefilepath + filename;
 	}
 
 System.out.println("From Path: " + FromPath);

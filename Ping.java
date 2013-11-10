@@ -1,6 +1,6 @@
 public class Ping extends Message {
     public enum Command {
-        QUERY, MAP, REDUCE;
+        QUERY, TASK;
     }
 
     private Command command;
@@ -16,5 +16,13 @@ public class Ping extends Message {
     Ping(Command command, Task task) {
         this.command = command;
         this.task = task;
+    }
+
+    Command command() {
+        return command;
+    }
+
+    Task task() {
+        return task;
     }
 }
