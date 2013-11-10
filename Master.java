@@ -42,7 +42,7 @@ public class Master {
         // Assumes that all nodes are already running and listening for master
         Scanner sc = null;
         try {
-            sc = new Scanner(new File(args[1]));
+            sc = new Scanner(new File(args[0]));
         } catch (FileNotFoundException e) {
             System.out.println(e);
             return;
@@ -59,6 +59,7 @@ public class Master {
                     int port = sc.nextInt();
                     Socket socket = new Socket(hostname, port);
                     nodes.put(i, new NodeInfo(hostname, port, socket));
+                    System.out.println("Added node: " + i + " at host "+hostname+ " and port " + port);
 	        }
             } catch (IOException e) {
                 System.out.println(e);
@@ -68,7 +69,15 @@ public class Master {
 
         // Initialize the Distributed File System
         // Hard coding some of the parameters
-        dfs = new DistFileSystem("//tmp", 100);
+        dfs = new DistFileSystem("//tmp//", 100);
+
+// TODO: Remove
+try {
+dfs.SplitFile("AddInput.txt", 2);
+} catch (Exception e) {
+System.out.println(e);
+return;
+}
 
 	// Listen to user commands
 	try{
@@ -183,6 +192,7 @@ public static class DistFileSystem {
         int i = 0;
         while(fis.available() > 0) {
             byte[] bytes = new byte[recordsize * recordsperfile];
+            fis.read(bytes);
             File outfile = new File(outfilepath + i);
             FileOutputStream fos = new FileOutputStream(outfile);
             fos.write(bytes);

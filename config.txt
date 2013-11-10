@@ -1,3 +1,2 @@
-unix12.andrew.cmu.edu 1127
-unix3.andrew.cmu.edu 1000
-unix2.andrew.cmu.edu 2000
+unix1.andrew.cmu.edu
+unix3.andrew.cmu.edu 10000
