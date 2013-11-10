@@ -225,7 +225,7 @@ public static class DistFileSystem {
             NodeInfo src = nodes.get(source);
             Socket sr = src.socket;
             String srcaddr = sr.getRemoteSocketAddress().toString();
-            FromPath = "ssh://" + src.host + relativefilepath + filename;
+            FromPath = "//"+src.host +":"+src.port + relativefilepath + filename;
         }
 
         // Set the target file path
@@ -240,7 +240,7 @@ public static class DistFileSystem {
 	    NodeInfo tgt = nodes.get(target);
 	    Socket tg = tgt.socket;
 	    String tgtaddr = tg.getRemoteSocketAddress().toString();	
-	    ToPath = "ssh://" + tgt.host + relativefilepath + filename;
+	    ToPath = "//" + tgt.host +":"+ tgt.port + relativefilepath + filename;
 	}
 
 System.out.println("From Path: " + FromPath);
