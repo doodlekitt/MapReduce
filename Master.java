@@ -207,22 +207,42 @@ public static class DistFileSystem {
     // Assumes: filename is located at "relativefilepath"
     // Guarantees: new file will be saved at "relativefilepath"
     public void CopyFile(String filename, Integer source, Integer target) {
-	// Check valid network nodes
-        if(!(nodes.containsKey(source) && nodes.containsKey(target))) {
-            System.out.println("Invalid source or target");
-            return;
-        }
+	
+	String FromPath;
+	String ToPath;
 
-        NodeInfo src = nodes.get(source);
-	NodeInfo tgt = nodes.get(target); 
+	if(source == 0){ // moving from master
+	    // Check valid target node
+            if(!(nodes.containsKey(target))) {
+            	System.out.println("Invalid target");
+            	return;
+            }
+	
+	    NodeInfo tgt = nodes.get(target);
+	    Socket tg = tgt.socket;
+	    String tgtaddr = tg.getRemoteSocketAddress().toString();	
+	    FromPath = relativefilepath + filename;
+	    ToPath = "//" + tgtaddr + relativefilepath + filename;
 
-	Socket sr = src.socket;
-	Socket tg = tgt.socket;
-	String srcaddr = sr.getRemoteSocketAddress().toString();
-	String tgtaddr = tg.getRemoteSocketAddress().toString();
+	}
+	else {
+	    // Check valid network nodes
+            if(!(nodes.containsKey(source) && nodes.containsKey(target))) {
+            	System.out.println("Invalid source or target");
+            	return;
+            }
 
-	String FromPath = "//" + srcaddr + "//" + relativefilepath + filename; 
-	String ToPath = "//" + tgtaddr + "//"+ relativefilepath+filename;
+            NodeInfo src = nodes.get(source);
+	    NodeInfo tgt = nodes.get(target); 
+
+	    Socket sr = src.socket;
+	    Socket tg = tgt.socket;
+	    String srcaddr = sr.getRemoteSocketAddress().toString();
+	    String tgtaddr = tg.getRemoteSocketAddress().toString();
+
+	    FromPath = "//" + srcaddr + relativefilepath + filename; 
+	    ToPath = "//" + tgtaddr + relativefilepath+filename;
+	}
 
 	try{
 	    File newF = new File(ToPath);
