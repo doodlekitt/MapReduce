@@ -24,7 +24,6 @@ public class Node {
             System.out.println(e);
             return;
         }
-
     }
 
 // Takes as arguments

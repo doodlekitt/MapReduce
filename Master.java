@@ -79,6 +79,8 @@ System.out.println(e);
 return;
 }
 
+dfs.CopyFile("AddInput.txt0", 0, 1);
+
 	// Listen to user commands
 	try{
 	    BufferedReader br = 
@@ -211,38 +213,38 @@ public static class DistFileSystem {
 	String FromPath;
 	String ToPath;
 
+        // Set the source file path
 	if(source == 0){ // moving from master
-	    // Check valid target node
+            FromPath = relativefilepath + filename;
+        } else {
+            if(!(nodes.containsKey(source))) {
+                System.out.println("Invalid source");
+                return;
+            }
+
+            NodeInfo src = nodes.get(source);
+            Socket sr = src.socket;
+            String srcaddr = sr.getRemoteSocketAddress().toString();
+            FromPath = "ssh://" + src.host + relativefilepath + filename;
+        }
+
+        // Set the target file path
+        if(target == 0) { // moving to master
+            ToPath = relativefilepath + filename;
+        } else {
             if(!(nodes.containsKey(target))) {
             	System.out.println("Invalid target");
             	return;
             }
-	
+
 	    NodeInfo tgt = nodes.get(target);
 	    Socket tg = tgt.socket;
 	    String tgtaddr = tg.getRemoteSocketAddress().toString();	
-	    FromPath = relativefilepath + filename;
-	    ToPath = "//" + tgtaddr + relativefilepath + filename;
-
+	    ToPath = "ssh://" + tgt.host + relativefilepath + filename;
 	}
-	else {
-	    // Check valid network nodes
-            if(!(nodes.containsKey(source) && nodes.containsKey(target))) {
-            	System.out.println("Invalid source or target");
-            	return;
-            }
 
-            NodeInfo src = nodes.get(source);
-	    NodeInfo tgt = nodes.get(target); 
-
-	    Socket sr = src.socket;
-	    Socket tg = tgt.socket;
-	    String srcaddr = sr.getRemoteSocketAddress().toString();
-	    String tgtaddr = tg.getRemoteSocketAddress().toString();
-
-	    FromPath = "//" + srcaddr + relativefilepath + filename; 
-	    ToPath = "//" + tgtaddr + relativefilepath+filename;
-	}
+System.out.println("From Path: " + FromPath);
+System.out.println("To Path: " + ToPath);
 
 	try{
 	    File newF = new File(ToPath);
