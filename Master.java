@@ -74,12 +74,21 @@ public class Master {
 // TODO: Remove
 try {
 dfs.SplitFile("AddInput.txt", 2);
+
+NodeInfo node = nodes.get(1);
+
+String testfp = dfs.relativefilepath + "AddInput.txt0";
+System.out.println("Sending file " + testfp);
+
+Ping ping = new Ping(Ping.Command.RECEIVE, testfp);
+
+Message.send(node.socket, ping);
+Message.sendFile(node.socket, testfp);
+
 } catch (Exception e) {
 System.out.println(e);
 return;
 }
-
-dfs.CopyFile("AddInput.txt0", 0, 1);
 
 	// Listen to user commands
 	try{
@@ -104,10 +113,10 @@ dfs.CopyFile("AddInput.txt0", 0, 1);
 		    // TODO
 
 		} else if(command.startsWith("mapreduce")){
-		    if(commandargs.length < 4){
+		    if(commandargs.length != 4){
 			System.out.println("Expecting command of form:");
 			System.out.println("mapreduce <MapClass> <recordlength>"
-                                           + " <files>");
+                                           + " <file>");
 		    } else{
 		    	// Check if the class is valid
 			Class<?> c = Class.forName(commandargs[1]);
@@ -116,8 +125,12 @@ dfs.CopyFile("AddInput.txt0", 0, 1);
 			int reclen = Integer.valueOf(commandargs[2]).intValue();
 		
 			// Extract file argument array
-			String[] files = Arrays.copyOfRange(commandargs, 3, 
-					commandargs.length);	
+			String filepath = commandargs[3];
+                        File file = new File(dfs.relativefilepath + file + '0');
+                        if(!file.exists()) {
+                            System.out.println("Splitting file...");
+                            dfs.SplitFile(filepath, recsize);
+                        }
 
 			// Make new MapClass object
 			MapClass mapper = (MapClass)c.newInstance();
@@ -203,55 +216,8 @@ public static class DistFileSystem {
         }
         fis.close();
     }
-
-    // takes a filename, a source node (to copy from) and a target node
-    // (to copy to)
-    // Assumes: filename is located at "relativefilepath"
-    // Guarantees: new file will be saved at "relativefilepath"
-    public void CopyFile(String filename, Integer source, Integer target) {
-	
-	String FromPath;
-	String ToPath;
-
-        // Set the source file path
-	if(source == 0){ // moving from master
-            FromPath = relativefilepath + filename;
-        } else {
-            if(!(nodes.containsKey(source))) {
-                System.out.println("Invalid source");
-                return;
-            }
-
-            NodeInfo src = nodes.get(source);
-            Socket sr = src.socket;
-            String srcaddr = sr.getRemoteSocketAddress().toString();
-            FromPath = srcaddr + relativefilepath + filename;
-        }
-
-        // Set the target file path
-        if(target == 0) { // moving to master
-            ToPath = relativefilepath + filename;
-        } else {
-            if(!(nodes.containsKey(target))) {
-            	System.out.println("Invalid target");
-            	return;
-            }
-
-	    NodeInfo tgt = nodes.get(target);
-	    Socket tg = tgt.socket;
-	    String tgtaddr = tg.getRemoteSocketAddress().toString();
-
-            Scanner scanner = new Scanner(tgtaddr);
-            scanner.useDelimiter("/");
-            scanner.next();
-	
-	    ToPath = "ssh:////" + scanner.next() + relativefilepath + filename;
-	}
-
-System.out.println("From Path: " + FromPath);
-System.out.println("To Path: " + ToPath);
-
-	try{
+/*
+ * TODO: Remove
 	    File newF = new File(ToPath);
 	    FileOutputStream fout = new FileOutputStream(ToPath, true);
 	    fout.flush();
@@ -271,5 +237,6 @@ System.out.println("To Path: " + ToPath);
 	    System.out.println(e);
 	}
     }
+*/
 }
 }

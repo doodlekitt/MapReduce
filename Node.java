@@ -34,6 +34,9 @@ public class Node {
                     case QUERY: response = new Pong();
                                 break;
                     case TASK: break;
+                    case RECEIVE: System.out.println("Receiving file "+ ping.filepath());
+                                  Ping.recieveFile(master, ping.filepath());
+                                  break;
                     default: break;
                 }
             } catch (IOException e) {
