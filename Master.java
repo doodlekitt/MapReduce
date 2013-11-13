@@ -122,20 +122,31 @@ return;
 			Class<?> c = Class.forName(commandargs[1]);
 			
 			// Extract record length in bytes
-			int reclen = Integer.valueOf(commandargs[2]).intValue();
+			int recsize = Integer.valueOf(commandargs[2]).intValue();
 		
 			// Extract file argument array
-			String filepath = commandargs[3];
-                        File file = new File(dfs.relativefilepath + file + '0');
+			String filepath = dfs.relativefilepath + commandargs[3];
+
+                        File file = new File(filepath + '0');
                         if(!file.exists()) {
                             System.out.println("Splitting file...");
                             dfs.SplitFile(filepath, recsize);
                         }
 
-			// Make new MapClass object
-			MapClass mapper = (MapClass)c.newInstance();
+                        // Make new MapClass object
+                        MapClass mapper = (MapClass)c.newInstance();
 
-			// TODO: Make it mapreduce using the given info
+                        // Create tasks for mapping on each file partition
+                        List<Task> tasks = new ArrayList<Task>();
+                        i = 0;
+                        while(file.exists()) {
+                            Task task = new Task(Task.Type.MAP, mapper, filepath + i);
+                            tasks.add(task);
+                            i++;
+                            file = new File(filepath + i);
+                        }
+
+                        DistributeTasks(tasks);
 		    }
 		} else {
 		    System.out.print("Invalid command");
@@ -147,6 +158,10 @@ return;
 	}
 
 
+    }
+
+    private static void DistributeTasks(List<Task> tasks) {
+         return;
     }
 
     private static class Heartbeat implements Runnable {
@@ -200,7 +215,9 @@ public static class DistFileSystem {
         return nodelist;
     }
 
-    public void SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
+    // Splits the given file
+    // Returns: The number of files split into
+    public int SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
         File infile = new File(filepath);
         FileInputStream fis = new FileInputStream(infile);
         String outfilepath = relativefilepath + filepath;
@@ -215,6 +232,8 @@ public static class DistFileSystem {
             i++;
         }
         fis.close();
+
+        return i;
     }
 /*
  * TODO: Remove
