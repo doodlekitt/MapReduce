@@ -6,15 +6,11 @@ import java.util.*;
 public class Master {
 
     private static class NodeInfo {
-        public String host;
-        public int port;
         public Socket socket;
         public List<Task> tasks;
         public List<String> files;
 
-        NodeInfo(String host, int port, Socket socket) {
-            this.host = host;
-            this.port = port;
+        NodeInfo(Socket socket) {
             this.socket = socket;
             this.tasks = new LinkedList<Task>();
             this.files = new LinkedList<String>();
@@ -24,7 +20,6 @@ public class Master {
     // Information about the nodes
     private static Hashtable<Integer, NodeInfo> nodes =
         new Hashtable<Integer, NodeInfo>();
-
 
     // The distributed file system
     private static DistFileSystem dfs;
@@ -47,20 +42,21 @@ public class Master {
             System.out.println(e);
             return;
         }
-        int i = 0;
+
+        // Reads settings from file
+        String scfileprefix = sc.next(); // Location to save files for dfs
+        int scnumdup = sc.nextInt(); // Number of times to duplicate each file
+        int screcordsperfile = sc.nextInt(); // Records per file
 
         while(sc.hasNext()) {
+            int i = 1;
             try {
                 // Discard the first line, as it has info on master
-                if(i == 0) {
-                    sc.nextLine();
-                } else {
-                    String hostname = sc.next();
-                    int port = sc.nextInt();
-                    Socket socket = new Socket(hostname, port);
-                    nodes.put(i, new NodeInfo(hostname, port, socket));
-                    System.out.println("Added node: " + i + " at host "+hostname+ " and port " + port);
-	        }
+                String hostname = sc.next();
+                int port = sc.nextInt();
+                Socket socket = new Socket(hostname, port);
+                nodes.put(i, new NodeInfo(socket));
+                System.out.println("Added node: " + i + " at host "+hostname+ " and port " + port);
             } catch (IOException e) {
                 System.out.println(e);
             }
@@ -68,16 +64,17 @@ public class Master {
         }
 
         // Initialize the Distributed File System
-        // Hard coding some of the parameters
-        dfs = new DistFileSystem("//tmp//", 100);
+        scnumdup = Math.min(scnumdup, nodes.size());
 
-// TODO: Remove
+        dfs = new DistFileSystem(scfileprefix, scnumdup, screcordsperfile);
+
+// TODO: Remove`
 try {
 dfs.SplitFile("AddInput.txt", 2);
 
 NodeInfo node = nodes.get(1);
 
-String testfp = dfs.relativefilepath + "AddInput.txt0";
+String testfp = dfs.fileprefix + "AddInput.txt0";
 System.out.println("Sending file " + testfp);
 
 Ping ping = new Ping(Ping.Command.RECEIVE, testfp);
@@ -125,7 +122,7 @@ return;
 			int recsize = Integer.valueOf(commandargs[2]).intValue();
 		
 			// Extract file argument array
-			String filepath = dfs.relativefilepath + commandargs[3];
+			String filepath = dfs.fileprefix + commandargs[3];
 
                         File file = new File(filepath + '0');
                         if(!file.exists()) {
@@ -138,7 +135,7 @@ return;
 
                         // Create tasks for mapping on each file partition
                         List<Task> tasks = new ArrayList<Task>();
-                        i = 0;
+                        int i = 0;
                         while(file.exists()) {
                             Task task = new Task(Task.Type.MAP, mapper, filepath + i);
                             tasks.add(task);
@@ -192,11 +189,14 @@ return;
 public static class DistFileSystem {
 
     private int recordsperfile;
-    private String relativefilepath;
+    private int numdup;
 
-    DistFileSystem(String rfp, int rpf) {
-        this.relativefilepath = rfp;
+    public String fileprefix;
+
+    DistFileSystem(String fileprefix, int rpf, int nd) {
+        this.fileprefix = fileprefix;
         this.recordsperfile = rpf;
+        this.numdup = nd;
     }
 
     // Assumes 'node' is already in 'nodes'
@@ -220,7 +220,7 @@ public static class DistFileSystem {
     public int SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
         File infile = new File(filepath);
         FileInputStream fis = new FileInputStream(infile);
-        String outfilepath = relativefilepath + filepath;
+        String outfilepath = filepath + filepath;
         int i = 0;
         while(fis.available() > 0) {
             byte[] bytes = new byte[recordsize * recordsperfile];

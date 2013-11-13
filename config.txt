@@ -1,2 +1,4 @@
-unix6.andrew.cmu.edu
+//tmp//
+100
+3
 unix1.andrew.cmu.edu 11279
