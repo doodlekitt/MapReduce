@@ -142,7 +142,7 @@ return;
                         List<Task> tasks = new ArrayList<Task>();
                         int i = 0;
                         while(file.exists()) {
-                            Task task = new Task(Task.Type.MAP, mapper, filepath + i);
+                            Task task = new Task(Task.Type.MAP, mapper, recsize, filepath + i, filepath + i + "map");
                             tasks.add(task);
                             i++;
                             file = new File(filepath + i);

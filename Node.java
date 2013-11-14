@@ -97,8 +97,7 @@ public static class Mapper implements Runnable {
         fis.read(bytes);
         String input = new String(bytes);
 
-        Map.Entry<Object,Object> result =
-            (Map.Entry<Object, Object>)mapper.map(input);
+        Map.Entry<Object,Object> result = mapper.map(input);
 
 	// Add key, value to hashtable if not in
 	// Append value if it is
@@ -141,64 +140,62 @@ public void run() {
     File outfile = new File(task.outfile());
 
     // Create streams to files
-    ObjectOutputStream out = 
-	new ObjectOutputStream(new FileOutputStream(outfile));
+    List<Hashtable<Object, List<Object>>> tables =
+        new ArrayList<Hashtable<Object, List<Object>>>(task.infiles().size());
 
-    FileInputStream fs1 = new FileInputStream(infilepath1);
-    ObjectInputStream infile1 = new ObjectInputStream(fs1);
-
-    FileInputStream fs2 = new FileInputStream(infilepath2);
-    ObjectInputStream infile2 = new ObjectInputStream(fs2);
-
-    // Read in the previously mapped objects
-    
-    Hashtable<?, ArrayList<?>> map1 = 
-	(Hashtable<?, ArrayList<?>>)infile1.readObject();
-
-    Hashtable<?, ArrayList<?>> map2 = 
-	(Hashtable<?, ArrayList<?>>)infile2.readObject();
-
-    Hashtable<?, ArrayList<?>> combined = new Hashtable<?, ArrayList<?>>();
-
-    // merge the hashtables
-
-    Enumeration en = map2.keys();
-    while(en.hasMoreElements()){
-	Object key = en.nextElement();
-	ArrayList<?> values = map2.get(key);
-	if(map1.contains(key)){
-	    values.addAll(map1.get(key));
-	}
-	combined.put(key, values);
+    for(String infile : task.infiles()) {
+        try {
+            FileInputStream fis = new FileInputStream(infile);
+            ObjectInputStream ois = new ObjectInputStream(fis);
+            @SuppressWarnings("unchecked")
+            Hashtable<Object, List<Object>> table =
+                (Hashtable<Object, List<Object>>)ois.readObject();
+            tables.add(table);
+            ois.close();
+        } catch (Exception e) {
+            System.out.println(e);
+            // TODO: Add additional error counting?
+            return;
+        }
     }
 
-    Iterator<Map.Entry<?, ArrayList<?>>> it = combined.entrySet().iterator();
+    // Merge and reduce the hashtable(s)
+    Set<Object> keys = new HashSet<Object>();
+    for(Hashtable<Object, List<Object>> table : tables) {
+        keys.addAll(table.keySet());
+    }
 
-    // Create final result
-    Hashtable<?,?> final = new Hashtable<?,?>();
+    Hashtable<Object, Object> results = new Hashtable<Object, Object>();
 
-    while(it.hasNext()){
-	Map.Entry<?, ArrayList<?>> entry = it.next();
+    for(Object key : keys) {
+        List<Object> values = new ArrayList<Object>();
+        for(Hashtable<Object, List<Object>> table : tables) {
+            if(table.containsKey(key)) {
+                values.addAll(table.get(key));
+            }
+        }
 
-	Map.Entry<?, ?> reduced = func.reduce(entry);
-	final.put(reduced.getKey(), reduced.getValue());
+        // reduce
+        Map.Entry<Object, List<Object>> entry =
+            new AbstractMap.SimpleEntry<Object, List<Object>>(key, values);
+        
+        Map.Entry<Object, Object> result = task.mapreduce().reduce(entry);
+        results.put(result.getKey(), result.getValue());
     }
 
     // Write out final result
-    out.writeObject(final);
-    out.flush();	
+    try {
+    ObjectOutputStream out =
+        new ObjectOutputStream(new FileOutputStream(task.outfile()));
+    out.writeObject(results);
+    out.flush();
 
-   // Clean up
-   try{
 	out.close();
-	infile1.close();
-	infile2.close();
-
    } catch (Exception e){
 	System.out.println(e);
    }
 
 }
 }
-*/
+
 }
