@@ -66,7 +66,7 @@ public class Node {
 // 4) end of record range
 // 5) path to output file to append results to
 
-public class Mapper implements Runnable {
+public static class Mapper implements Runnable {
 
     private MapClass mapper;
 
@@ -123,7 +123,7 @@ public class Mapper implements Runnable {
 
 }
 }
-public static Reducer implements Runnable{
+public static class Reducer implements Runnable{
 
 public void reducer(MapClass func, String infilepath1, String infilepath2, String outfile)
 throws FileNotFoundExceptionIOException {
