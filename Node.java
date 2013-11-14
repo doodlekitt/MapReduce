@@ -5,6 +5,9 @@ import java.util.*;
 
 public class Node {
 
+    private static ConcurentLinkedQueue<Task> completed =
+        new ConcurrentLinkedQueue<Task>();
+
     public static void main(String[] args) {
         if(args.length != 1) {
             String error = "Expects command of the form:\n" +
@@ -63,9 +66,12 @@ public class Node {
 // 4) end of record range
 // 5) path to output file to append results to
 
-public void mapper(MapClass func, String infilepath, int start, int end,
-                   String outfilepath) throws FileNotFoundException, IOException
-{
+public class Mapper implements Runnable {
+
+    private MapClass mapper;
+
+    // constructor
+    Mapper (MapClass mapper, String infilepath, String outfilepath) {
     // Make reader and writer for file
     File outfile = new File(outfilepath);
     ObjectOutputStream out =
@@ -94,7 +100,8 @@ public void mapper(MapClass func, String infilepath, int start, int end,
 
 }
 
-public void reducer(MapClass func, String infilepath1, String infilepath2) {
+public void reducer(MapClass func, String infilepath1, String infilepath2) implements Runnable
+throws FileNotFoundExceptionIOException {
 
 }
 
