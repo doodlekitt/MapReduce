@@ -13,6 +13,7 @@ CLASSES = \
         Master.java \
         Node.java \
         AddMap.java \
+	WordCount.java \
 
 default: classes
 
