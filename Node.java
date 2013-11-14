@@ -2,10 +2,11 @@ import java.io.*;
 import java.lang.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Node {
 
-    private static ConcurentLinkedQueue<Task> completed =
+    private static Queue<Task> completed =
         new ConcurrentLinkedQueue<Task>();
 
     public static void main(String[] args) {
@@ -68,45 +69,48 @@ public class Node {
 
 public static class Mapper implements Runnable {
 
-    private MapClass mapper;
+    Task task;
 
-    // constructor
-    public Mapper (MapClass mapper, String infilepath, String outfilepath) {
+    // Constructor
+    Mapper (Task task) {
+        this.task = task;
+    }
+
+    public void run() {
+
+    MapClass mapper = task.mapreduce();
 
     // Make hashtable to store mapped values in 
-    Hashtable<?, ArrayList<?>> mapped = new Hashtable<?, ArrayList<?>>();
+    Hashtable<Object, List<Object>> mapped =
+        new Hashtable<Object, List<Object>>();
 
     // Make reader and writer for file
+    try {
+        File outfile = new File(task.outfile());
+        ObjectOutputStream out =
+            new ObjectOutputStream(new FileOutputStream(outfile));
+        FileInputStream fis = new FileInputStream(task.infile());
 
-    File outfile = new File(outfilepath);
-    ObjectOutputStream out =
-	new ObjectOutputStream(new FileOutputStream(outfile));
-    BufferedReader in = new BufferedReader(new FileReader(infilepath));
-    String input = in.readLine();
+    while(fis.available() > 0) {
+        // Read input from file
+        byte[] bytes = new byte[task.recordlen()];
+        fis.read(bytes);
+        String input = new String(bytes);
 
-    // Read in file and map and write results
-    // in the record version, while loop should go to EOF or the end given
-  
-    while(input != null){
-        if(input == null) break;
-
-        Map.Entry<?,?> result = func.map(input);
+        Map.Entry<Object,Object> result =
+            (Map.Entry<Object, Object>)mapper.map(input);
 
 	// Add key, value to hashtable if not in
 	// Append value if it is
-	
-	if(mapped.get(result.getKey()) == null){
-	    ArrayList<?> newval = new ArrayList<?>();
-	    newval.add(result.getValue());
-	    mapped.put(result.getKey(), newval);
+	List<Object> values;
+	if(!mapped.contains(result.getKey())){
+	    values = new ArrayList<Object>();
 	} 
 	else{
-	    ArrayList<?> values = mapped.get(result.getKey());
-	    values.add(result.getValue());
-	    mapped.put(result.getKey(), values);
+	    values = mapped.get(result.getKey());
 	}
-
-        input = in.readLine();
+        values.add(result.getValue());
+        mapped.put(result.getKey(), values);
     }
 
     // Write hashtable to file
@@ -114,26 +118,31 @@ public static class Mapper implements Runnable {
     out.flush();
 
     // Cleanup
-    try{
         out.close();
-        in.close();
+        fis.close();
     } catch (Exception e) {
         System.out.println(e);
+        // TODO: Additional error handling?
     }
 
 }
 }
+
 public static class Reducer implements Runnable{
 
-public void reducer(MapClass func, String infilepath1, String infilepath2, String outfile)
-throws FileNotFoundExceptionIOException {
+Task task;
 
+Reducer (Task task) {
+    this.task = task;
+}
+
+public void run() {
     // Create output file
-    File outputfile = new File(outfile);
+    File outfile = new File(task.outfile());
 
     // Create streams to files
     ObjectOutputStream out = 
-	new ObjectOutputStream(new FileOutputStream(outputfile));
+	new ObjectOutputStream(new FileOutputStream(outfile));
 
     FileInputStream fs1 = new FileInputStream(infilepath1);
     ObjectInputStream infile1 = new ObjectInputStream(fs1);
@@ -190,4 +199,6 @@ throws FileNotFoundExceptionIOException {
    }
 
 }
+}
+*/
 }
