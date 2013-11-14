@@ -71,8 +71,13 @@ public class Mapper implements Runnable {
     private MapClass mapper;
 
     // constructor
-    Mapper (MapClass mapper, String infilepath, String outfilepath) {
+    public Mapper (MapClass mapper, String infilepath, String outfilepath) {
+
+    // Make hashtable to store mapped values in 
+    Hashtable<?, ArrayList<?>> mapped = new Hashtable<?, ArrayList<?>>();
+
     // Make reader and writer for file
+
     File outfile = new File(outfilepath);
     ObjectOutputStream out =
 	new ObjectOutputStream(new FileOutputStream(outfile));
@@ -81,14 +86,32 @@ public class Mapper implements Runnable {
 
     // Read in file and map and write results
     // in the record version, while loop should go to EOF or the end given
+  
     while(input != null){
         if(input == null) break;
 
-        Object result = func.map(input);
-        out.writeObject(result);
-        out.flush();
+        Map.Entry<?,?> result = func.map(input);
+
+	// Add key, value to hashtable if not in
+	// Append value if it is
+	
+	if(mapped.get(result.getKey()) == null){
+	    ArrayList<?> newval = new ArrayList<?>();
+	    newval.add(result.getValue());
+	    mapped.put(result.getKey(), newval);
+	} 
+	else{
+	    ArrayList<?> values = mapped.get(result.getKey());
+	    values.add(result.getValue());
+	    mapped.put(result.getKey(), values);
+	}
+
         input = in.readLine();
     }
+
+    // Write hashtable to file
+    out.writeObject(mapped);
+    out.flush();
 
     // Cleanup
     try{
@@ -99,10 +122,72 @@ public class Mapper implements Runnable {
     }
 
 }
+}
+public static Reducer implements Runnable{
 
-public void reducer(MapClass func, String infilepath1, String infilepath2) implements Runnable
+public void reducer(MapClass func, String infilepath1, String infilepath2, String outfile)
 throws FileNotFoundExceptionIOException {
 
-}
+    // Create output file
+    File outputfile = new File(outfile);
 
+    // Create streams to files
+    ObjectOutputStream out = 
+	new ObjectOutputStream(new FileOutputStream(outputfile));
+
+    FileInputStream fs1 = new FileInputStream(infilepath1);
+    ObjectInputStream infile1 = new ObjectInputStream(fs1);
+
+    FileInputStream fs2 = new FileInputStream(infilepath2);
+    ObjectInputStream infile2 = new ObjectInputStream(fs2);
+
+    // Read in the previously mapped objects
+    
+    Hashtable<?, ArrayList<?>> map1 = 
+	(Hashtable<?, ArrayList<?>>)infile1.readObject();
+
+    Hashtable<?, ArrayList<?>> map2 = 
+	(Hashtable<?, ArrayList<?>>)infile2.readObject();
+
+    Hashtable<?, ArrayList<?>> combined = new Hashtable<?, ArrayList<?>>();
+
+    // merge the hashtables
+
+    Enumeration en = map2.keys();
+    while(en.hasMoreElements()){
+	Object key = en.nextElement();
+	ArrayList<?> values = map2.get(key);
+	if(map1.contains(key)){
+	    values.addAll(map1.get(key));
+	}
+	combined.put(key, values);
+    }
+
+    Iterator<Map.Entry<?, ArrayList<?>>> it = combined.entrySet().iterator();
+
+    // Create final result
+    Hashtable<?,?> final = new Hashtable<?,?>();
+
+    while(it.hasNext()){
+	Map.Entry<?, ArrayList<?>> entry = it.next();
+
+	Map.Entry<?, ?> reduced = func.reduce(entry);
+	final.put(reduced.getKey(), reduced.getValue());
+    }
+
+    // Write out final result
+    out.writeObject(final);
+    out.flush();	
+
+   // Clean up
+   try{
+	out.close();
+	infile1.close();
+	infile2.close();
+
+   } catch (Exception e){
+	System.out.println(e);
+   }
+
+}
 }
