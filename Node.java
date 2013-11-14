@@ -25,9 +25,10 @@ public class Node {
             return;
         }
 
+        boolean isRunning = true;
         Ping ping = null;
         Pong response = null;
-        while(true) {
+        while(isRunning) {
             try {
                 ping = (Ping)Ping.recieve(master);
                 switch (ping.command()) {
@@ -37,12 +38,21 @@ public class Node {
                     case RECEIVE: System.out.println("Receiving file "+ ping.filepath());
                                   Ping.recieveFile(master, ping.filepath());
                                   break;
+                    case KILL: isRunning = false;
+                               break;
                     default: break;
                 }
             } catch (IOException e) {
                 System.out.println(e);
                 return;    
             }
+        }
+        // Clean up
+        try {
+            master.close();
+        }
+        catch (IOException e) {
+            // do nothing
         }
     }
 
@@ -84,5 +94,8 @@ public void mapper(MapClass func, String infilepath, int start, int end,
 
 }
 
+public void reducer(MapClass func, String infilepath1, String infilepath2) {
+
+}
 
 }

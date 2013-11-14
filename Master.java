@@ -159,10 +159,8 @@ return;
 	    System.out.println(e);
 	}
 
-        for(NodeInfo node : nodes.values()) {
-            node.socket.close();
-        }
-        hbthread.stop();
+        // Clean up
+        hb.stop();
     }
 
     private static void DistributeTasks(List<Task> tasks) {
@@ -175,6 +173,15 @@ return;
 
         public void stop() {
             isRunning = false;
+            // Kill all nodes
+            for(Integer key : nodes.keySet()) {
+                try {
+                    Socket socket = nodes.get(key).socket;
+                    Message.send(socket, new Ping(Ping.Command.KILL));
+                } catch(IOException e) {
+                    // do nothing
+                }
+            }
         }
 
         public void run() {
