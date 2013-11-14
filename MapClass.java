@@ -1,8 +1,7 @@
-//Not sure if it needs to extend but there ya go
+import java.util.*;
 
-public interface MapClass extends java.io.Serializable 
+public interface MapClass extends java.io.Serializable
 {
-    public Object map(String input);
-    public Object combine(Object input);
-    public Object reduce(Object input);
+    public Map.Entry<?, ?> map(String input);
+    public Map.Entry<?, ?> reduce(Map.Entry<?, List<?>> input);
 }

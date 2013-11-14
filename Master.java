@@ -68,7 +68,12 @@ public class Master {
 
         dfs = new DistFileSystem(scfileprefix, scnumdup, screcordsperfile);
 
-// TODO: Remove`
+        Heartbeat hb = new Heartbeat();
+        Thread hbthread = new Thread(hb);
+        hbthread.start();
+        
+// TODO: Remove
+/*`
 try {
 dfs.SplitFile("AddInput.txt", 2);
 
@@ -86,7 +91,7 @@ Message.sendFile(node.socket, testfp);
 System.out.println(e);
 return;
 }
-
+*/
 	// Listen to user commands
 	try{
 	    BufferedReader br = 
@@ -154,7 +159,10 @@ return;
 	    System.out.println(e);
 	}
 
-
+        for(NodeInfo node : nodes.values()) {
+            node.socket.close();
+        }
+        hbthread.stop();
     }
 
     private static void DistributeTasks(List<Task> tasks) {

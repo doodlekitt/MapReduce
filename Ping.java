@@ -1,6 +1,6 @@
 public class Ping extends Message {
     public enum Command {
-        QUERY, TASK, RECEIVE;
+        QUERY, TASK, RECEIVE, KILL;
     }
 
     private Command command;
@@ -8,7 +8,7 @@ public class Ping extends Message {
     private String filepath;
 
     // Constructors
-    // For QUERY:
+    // For QUERY or KILL
     Ping(Command command) {
         this.command = command;
     }

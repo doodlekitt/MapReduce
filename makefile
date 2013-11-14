@@ -12,6 +12,7 @@ CLASSES = \
         Pong.java \
         Master.java \
         Node.java \
+        AddMap.java \
 
 default: classes
 

@@ -1,31 +1,20 @@
 import java.io.*;
 import java.util.*;
-import java.lang.*;
 
-public class AddMap extends MapClass{
+public class AddMap implements MapClass{
 
-    public Object map(String input){
-	return input;	
+    public Map.Entry<Integer, Integer> map(String input){
+        Integer value = Integer.valueOf(input);
+        Map.Entry<Integer, Integer> entry =
+            new AbstractMap.SimpleEntry<Integer, Integer>(0, value);
+	return entry;
     }
-    public Object combine(String[] input){
+
+    public Map.Entry<?, ?> reduce(Map.Entry<?, List<?>> input){
 	Integer sum = 0;
-	BufferedReader in = null;
-	String num = null;
-	for(int i = 0; i < input.length; i++){
-	    in = new BufferedReader(new FileInputStream(input[i]);
-	    while(true){
-		num = in.readLine();
-		if(num == null) break;
-		else{
-		    sum += Integer.valueOf(num);
-		}
-	    }
-	    in.close();
-	}
-	return sum;	
+	for(Object i : input.getValue()) {
+            sum += ((Integer) i).intValue();
+        }
+	return new AbstractMap.SimpleEntry<Integer, Integer>(0, sum);
     }
-    public Object reduce(Object input){
-	
-    }
-
 }
