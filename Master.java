@@ -2,8 +2,12 @@ import java.io.*;
 import java.lang.*;
 import java.net.*;
 import java.util.*;
+import java.util.concurrent.*;
 
 public class Master {
+
+    private static Hashtable<Integer, Queue<Ping>> pings =
+        new Hashtable<Integer, Queue<Ping>>();
 
     private static class NodeInfo {
         public Socket socket;
@@ -63,6 +67,12 @@ public class Master {
             i++;
         }
 
+        // Initialize pings
+        for(Integer i : nodes.keySet()) {
+            Queue<Ping> queue = new ConcurrentLinkedQueue<Ping>();
+            pings.put(i, queue);
+        }   
+
         // Initialize the Distributed File System
         scnumdup = Math.min(scnumdup, nodes.size());
 
@@ -73,7 +83,7 @@ public class Master {
         hbthread.start();
         
 // TODO: Remove
-/*`
+/*
 try {
 dfs.SplitFile("AddInput.txt", 2);
 
@@ -103,23 +113,23 @@ return;
 		command = br.readLine();
 
 		commandargs = command.split(" ");
-		if(command.startsWith("help")){
+		if(command.startsWith("help")) {
 		    String help = "Available Commands:\n";
 		    help += "quit: quit the network\n";
 		    help += "list: lists files in distributed file system\n";
 		    help += "mapreduce: starts new mapreduce\n";
 		    System.out.print(help);
-		} else if(command.startsWith("quit")){
+		} else if(command.startsWith("quit")) {
 		    break;
-		} else if(command.startsWith("list")){
+		} else if(command.startsWith("list")) {
 		    // TODO
 
-		} else if(command.startsWith("mapreduce")){
-		    if(commandargs.length != 4){
+		} else if(command.startsWith("mapreduce")) {
+		    if(commandargs.length != 4) {
 			System.out.println("Expecting command of form:");
 			System.out.println("mapreduce <MapClass> <recordlength>"
                                            + " <file>");
-		    } else{
+		    } else {
 		    	// Check if the class is valid
 			Class<?> c = Class.forName(commandargs[1]);
 			
@@ -185,13 +195,23 @@ return;
         }
 
         public void run() {
-            Message reply;
+            Pong reply = null;
             while(isRunning) {
                 for(Integer key : nodes.keySet()) {
                     try{
                         Socket socket = nodes.get(key).socket;
-                        Message.send(socket, new Ping(Ping.Command.QUERY));
-                        reply = (Message)Message.recieve(socket);
+                        Ping ping = null;
+                        if(!pings.get(key).isEmpty()) {
+                            ping = pings.get(key).remove();
+                        } else {
+                            ping = new Ping(Ping.Command.QUERY);
+                        }
+                        Message.send(socket, ping);
+                        if(ping.command() == Ping.Command.RECEIVE) {
+                            Message.sendFile(socket, ping.filepath());
+                        }
+                        reply = (Pong)Message.recieve(socket);
+                        processReply(reply);
                     } catch(IOException e) {
                         System.out.println(e);
                         nodes.remove(key);
@@ -200,6 +220,10 @@ return;
             }
         }
     }
+
+private static void processReply(Pong reply) {
+    return;
+}
 
 public static class DistFileSystem {
 

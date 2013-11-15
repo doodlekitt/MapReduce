@@ -9,6 +9,8 @@ public class Node {
     private static Queue<Task> completed =
         new ConcurrentLinkedQueue<Task>();
 
+    private static int availCores; // the number of available cores
+
     public static void main(String[] args) {
         if(args.length != 1) {
             String error = "Expects command of the form:\n" +
@@ -29,6 +31,10 @@ public class Node {
             return;
         }
 
+        // Number of available cores
+        // minus 1 for the current thread
+        availCores = Runtime.getRuntime().availableProcessors() - 1;
+
         boolean isRunning = true;
         Ping ping = null;
         Pong response = null;
@@ -38,8 +44,16 @@ public class Node {
                 switch (ping.command()) {
                     case QUERY: response = new Pong();
                                 break;
-                    case TASK: break;
-                    case RECEIVE: System.out.println("Receiving file "+ ping.filepath());
+                    case TASK: Thread newthread = null;
+                               if(ping.task().type() == Task.Type.MAP) {
+                                   newthread = new Thread(new Mapper(ping.task()));
+                               } else { // REDUCE
+                                   newthread = new Thread(new Reducer(ping.task()));
+                               }
+                               newthread.start();
+                               break;
+                    case RECEIVE: System.out.println("Receiving file "+
+                                                     ping.filepath());
                                   Ping.recieveFile(master, ping.filepath());
                                   break;
                     case KILL: isRunning = false;
