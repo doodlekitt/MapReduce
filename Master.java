@@ -85,7 +85,7 @@ public class Master {
 // TODO: Remove
 /*
   try {
-dfs.SplitFile("AddInput.txt", 2);
+dfs.splitFile("AddInput.txt", 2);
 
 NodeInfo node = nodes.get(1);
 
@@ -178,7 +178,7 @@ return;
     private static void distributeFile(String filepath, int recsize) throws FileNotFoundException, IOException {
         // split file
         System.out.println("Splitting file...");
-	dfs.SplitFile(filepath, recsize);
+	dfs.splitFile(filepath, recsize);
 
         List<Integer> nodelist = new ArrayList<Integer>(nodes.keySet());
 	dfs.numdup = Math.min(nodelist.size(), dfs.numdup);
@@ -233,7 +233,7 @@ return;
                             Message.sendFile(socket, ping.filepath());
                         }
                         reply = (Pong)Message.recieve(socket);
-                        processReply(reply);
+                        processReply(key, reply);
                     } catch(IOException e) {
                         System.out.println(e);
                         nodes.remove(key);
@@ -243,8 +243,22 @@ return;
         }
     }
 
-    private static void processReply(Pong reply) {
-	return;
+    private static void processReply(Integer node, Pong reply) {
+        if(reply.type() == Pong.Type.EMPTY)
+            return;
+        // Otherwise, it is type TASK
+        Task task = reply.task();
+        if(!reply.success()) {
+            // TODO: reassign task
+        } else {
+            // Add new file to dfs
+            dfs.add(node, task.outfile());
+            switch(task.type()) {
+                case MAP: break;
+                case REDUCE: break;
+                default: break;
+            }
+        }
     }
 
     public static class DistFileSystem {
@@ -262,7 +276,7 @@ return;
 	}
 
 	// Assumes 'node' is already in 'nodes'
-	public void Add (Integer node, String filename) {
+	public void add (Integer node, String filename) {
 	    NodeInfo info = nodes.get(node);
 	    info.files.add(filename);
 	}
@@ -279,7 +293,7 @@ return;
 
 	// Splits the given file
 	// Returns: The number of files split into
-	public int SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
+	public int splitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
 	    File infile = new File(filepath);
 	    FileInputStream fis = new FileInputStream(infile);
 	    String outfilepath = filepath + filepath;
