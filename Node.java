@@ -6,8 +6,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Node {
 
-    private static Queue<Pong> completed =
-        new ConcurrentLinkedQueue<Pong>();
+    private static Queue<Pong> pongs = new ConcurrentLinkedQueue<Pong>();
 
     private static int availCores; // the number of available cores
 
@@ -60,11 +59,20 @@ public class Node {
                                break;
                     default: break;
                 }
+                // Send an update to Master
+                Pong pong = null;
+                if(pongs.isEmpty()) {
+                    pong = new Pong();
+                } else {
+                    pong = pongs.remove();
+                }
+                Message.send(master, pong);
             } catch (IOException e) {
                 System.out.println(e);
                 return;    
             }
         }
+
         // Clean up
         try {
             master.close();
@@ -130,12 +138,18 @@ public static class Mapper implements Runnable {
     out.writeObject(mapped);
     out.flush();
 
+    // Report success
+    Pong pong = new Pong(task, true);
+    pongs.add(pong);
+
     // Cleanup
         out.close();
         fis.close();
     } catch (Exception e) {
         System.out.println(e);
-        // TODO: Additional error handling?
+        // Report failure
+        Pong pong = new Pong(task, false);
+        pongs.add(pong);
     }
 
 }
@@ -204,9 +218,16 @@ public void run() {
     out.writeObject(results);
     out.flush();
 
+    // Report success
+    Pong pong = new Pong(task, true);
+    pongs.add(pong);
+
 	out.close();
    } catch (Exception e){
 	System.out.println(e);
+        // Report failure
+        Pong pong = new Pong(task, false);
+        pongs.add(pong);
    }
 
 }
