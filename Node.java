@@ -124,7 +124,7 @@ public static class Mapper implements Runnable {
 	// Add key, value to hashtable if not in
 	// Append value if it is
 	List<Object> values;
-	if(!mapped.contains(result.getKey())){
+	if(!mapped.containsKey(result.getKey())){
 	    values = new ArrayList<Object>();
 	} 
 	else{
@@ -133,6 +133,9 @@ public static class Mapper implements Runnable {
         values.add(result.getValue());
         mapped.put(result.getKey(), values);
     }
+
+System.out.println("Finished mapping:");
+System.out.println(mapped.toString());
 
     // Write hashtable to file
     out.writeObject(mapped);

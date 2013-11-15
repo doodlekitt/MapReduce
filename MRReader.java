@@ -22,7 +22,5 @@ public class MRReader{
 	} catch (Exception e){
 	   System.out.println(e);
         }
-	
     }	
-
 }

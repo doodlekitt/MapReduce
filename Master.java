@@ -149,7 +149,8 @@ return;
                         // Create tasks for mapping on each file partition
                         for(int i = 0; i < dfs.splitNum(filepath); i++) {
                             Task task = new Task(Task.Type.MAP, mapper, reclen,
-                                filepath + i, filepath + i + "map");
+                                dfs.fileprefix + filepath + i,
+                                dfs.fileprefix + filepath + i + "map");
                             Ping ping = new Ping(Ping.Command.TASK, task);
 
                             List<Integer> candidates =
@@ -191,8 +192,9 @@ return;
             Ping ping = new Ping(Ping.Command.RECEIVE,
 			         dfs.fileprefix + filepath + i);
 	    Collections.shuffle(nodelist);
-            for(Integer node : nodelist.subList(i, dfs.numdup)) {
+            for(Integer node : nodelist.subList(0, dfs.numdup)) {
                 addPing(node, ping);
+                dfs.add(node, dfs.fileprefix + filepath + i);
             }
 	}
     }
@@ -325,9 +327,7 @@ System.out.println("Sending file" + ping.filepath());
 	    }
 	    fis.close();
 
-System.out.println("Split " + filepath + " into " + i);
 	    splitfiles.put(filepath, i);
-System.out.println("Splitfiles: " + splitfiles.toString());
 
 	    return i;
 	}
