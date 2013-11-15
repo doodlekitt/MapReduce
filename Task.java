@@ -1,7 +1,7 @@
 import java.util.List;
 import java.util.ArrayList;
 
-public class Task {
+public class Task implements java.io.Serializable {
     public enum Type {
         MAP, REDUCE;
     }
