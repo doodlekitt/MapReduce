@@ -10,14 +10,15 @@ public class MRReader{
 	    System.out.println("Expecting File Name");
 	    return;
 	}
+	FileInputStream fin = new FileInputStream(args[0]);
 	try{
 	    ObjectInputStream oin = 
-		new ObjectInputStream(new FileInputStream(args[0]));
+		new ObjectInputStream(fin);
 	    Hashtable<Object, Object> ans = 
 		(Hashtable<Object, Object>) oin.readObject();
 	    String answer = ans.toString();
 	    System.out.println(answer);
-	    oin.close();
+	    fin.close();
 	} catch (Exception e){
 	   System.out.println(e);
         }
