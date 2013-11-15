@@ -71,7 +71,7 @@ public class Master {
         for(Integer i : nodes.keySet()) {
             Queue<Ping> queue = new ConcurrentLinkedQueue<Ping>();
             pings.put(i, queue);
-        }   
+        }
 
         // Initialize the Distributed File System
         scnumdup = Math.min(scnumdup, nodes.size());
@@ -81,10 +81,10 @@ public class Master {
         Heartbeat hb = new Heartbeat();
         Thread hbthread = new Thread(hb);
         hbthread.start();
-        
+
 // TODO: Remove
 /*
-try {
+  try {
 dfs.SplitFile("AddInput.txt", 2);
 
 NodeInfo node = nodes.get(1);
@@ -104,7 +104,7 @@ return;
 */
 	// Listen to user commands
 	try{
-	    BufferedReader br = 
+	    BufferedReader br =
 		new BufferedReader(new InputStreamReader(System.in));
 	    String command = null;
 	    String[] commandargs = null;
@@ -130,35 +130,37 @@ return;
 			System.out.println("mapreduce <MapClass> <recordlength>"
                                            + " <file>");
 		    } else {
+                        try {
 		    	// Check if the class is valid
 			Class<?> c = Class.forName(commandargs[1]);
-			
-			// Extract record length in bytes
-			int recsize = Integer.valueOf(commandargs[2]).intValue();
-		
-			// Extract file argument array
-			String filepath = dfs.fileprefix + commandargs[3];
-
-                        File file = new File(filepath + '0');
-                        if(!file.exists()) {
-                            System.out.println("Splitting file...");
-                            dfs.SplitFile(filepath, recsize);
-                        }
-
-                        // Make new MapClass object
                         MapClass mapper = (MapClass)c.newInstance();
+			// Extract record length in bytes
+			int reclen = Integer.valueOf(commandargs[2]).intValue();
+			// Extract file argument array
+			String filepath = commandargs[3];
+
+                        // split the file and distribute the file to nodes
+                        // if not already done for this file
+                        if(dfs.splitNum(filepath) < 0) {
+                            distributeFile(filepath, reclen);
+                        }
 
                         // Create tasks for mapping on each file partition
-                        List<Task> tasks = new ArrayList<Task>();
-                        int i = 0;
-                        while(file.exists()) {
-                            Task task = new Task(Task.Type.MAP, mapper, recsize, filepath + i, filepath + i + "map");
-                            tasks.add(task);
-                            i++;
-                            file = new File(filepath + i);
-                        }
+                        for(int i = 0; i < dfs.splitNum(filepath); i++) {
+                            Task task = new Task(Task.Type.MAP, mapper, reclen,
+                                filepath + i, filepath + i + "map");
+                            Ping ping = new Ping(Ping.Command.TASK, task);
 
-                        DistributeTasks(tasks);
+                            List<Integer> candidates =
+                                dfs.listFileLoc(dfs.fileprefix + filepath + i);
+                            Collections.shuffle(candidates);
+                            // Assumes that candidate.size() > 0
+                            addPing(candidates.get(0), ping);
+                        }
+                        } catch (Exception e) {
+                            System.out.println("Sorry, cannot mapreduce this, exception:");
+                            System.out.println(e);
+                        }
 		    }
 		} else {
 		    System.out.print("Invalid command");
@@ -173,8 +175,28 @@ return;
         hb.stop();
     }
 
-    private static void DistributeTasks(List<Task> tasks) {
-         return;
+    private static void distributeFile(String filepath, int recsize) throws FileNotFoundException, IOException {
+        // split file
+        System.out.println("Splitting file...");
+	dfs.SplitFile(filepath, recsize);
+
+        List<Integer> nodelist = new ArrayList<Integer>(nodes.keySet());
+	dfs.numdup = Math.min(nodelist.size(), dfs.numdup);
+        // Send split files to ndoes
+	for(int i = 0; i < dfs.splitNum(filepath); i++) {
+            Ping ping = new Ping(Ping.Command.RECEIVE,
+			         dfs.fileprefix + filepath + i);
+	    Collections.shuffle(nodelist);
+            for(Integer node : nodelist.subList(i, dfs.numdup)) {
+                addPing(node, ping);
+            }
+	}
+    }
+
+    private static void addPing(Integer node, Ping ping) {
+        Queue<Ping> queue = pings.get(node);
+        queue.add(ping);
+        pings.put(node, queue);
     }
 
     private static class Heartbeat implements Runnable {
@@ -221,80 +243,70 @@ return;
         }
     }
 
-private static void processReply(Pong reply) {
-    return;
-}
-
-public static class DistFileSystem {
-
-    private int recordsperfile;
-    private int numdup;
-
-    public String fileprefix;
-
-    DistFileSystem(String fileprefix, int rpf, int nd) {
-        this.fileprefix = fileprefix;
-        this.recordsperfile = rpf;
-        this.numdup = nd;
+    private static void processReply(Pong reply) {
+	return;
     }
 
-    // Assumes 'node' is already in 'nodes'
-    public void Add (Integer node, String filename) {
-        NodeInfo info = nodes.get(node);
-        info.files.add(filename);
-    }
+    public static class DistFileSystem {
 
-    public List<Integer> ListFileLocations(String filename) {
-        List<Integer> nodelist = new LinkedList<Integer>();
+	private int recordsperfile;
+	public int numdup;
+	public String fileprefix;
+	private Hashtable<String, Integer> splitfiles =
+	    new Hashtable<String, Integer>();
 
-        for(Integer node : nodes.keySet()) {
-            if(nodes.get(node).files.contains(filename))
-                nodelist.add(node);
-        }
-        return nodelist;
-    }
+	DistFileSystem(String fileprefix, int rpf, int nd) {
+	    this.fileprefix = fileprefix;
+	    this.recordsperfile = rpf;
+	    this.numdup = nd;
+	}
 
-    // Splits the given file
-    // Returns: The number of files split into
-    public int SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
-        File infile = new File(filepath);
-        FileInputStream fis = new FileInputStream(infile);
-        String outfilepath = filepath + filepath;
-        int i = 0;
-        while(fis.available() > 0) {
-            byte[] bytes = new byte[recordsize * recordsperfile];
-            fis.read(bytes);
-            File outfile = new File(outfilepath + i);
-            FileOutputStream fos = new FileOutputStream(outfile);
-            fos.write(bytes);
-            fos.close();
-            i++;
-        }
-        fis.close();
+	// Assumes 'node' is already in 'nodes'
+	public void Add (Integer node, String filename) {
+	    NodeInfo info = nodes.get(node);
+	    info.files.add(filename);
+	}
 
-        return i;
-    }
-/*
- * TODO: Remove
-	    File newF = new File(ToPath);
-	    FileOutputStream fout = new FileOutputStream(ToPath, true);
-	    fout.flush();
-	    FileInputStream fin = new FileInputStream(FromPath);
-	    BufferedReader br = new BufferedReader(new InputStreamReader(fin));
-	    PrintStream out = new PrintStream(fout);
+	public List<Integer> listFileLoc(String filename) {
+	    List<Integer> nodelist = new LinkedList<Integer>();
 
-            String line = null;
-            while(true){
-                line = br.readLine();
-                if(line == null) break;
-                else
-                    out.println(line);
-            }
+	    for(Integer node : nodes.keySet()) {
+		if(nodes.get(node).files.contains(filename))
+		    nodelist.add(node);
+	    }
+	    return nodelist;
+	}
 
-	} catch (Exception e) {
-	    System.out.println(e);
+	// Splits the given file
+	// Returns: The number of files split into
+	public int SplitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
+	    File infile = new File(filepath);
+	    FileInputStream fis = new FileInputStream(infile);
+	    String outfilepath = filepath + filepath;
+	    int i = 0;
+	    while(fis.available() > 0) {
+		byte[] bytes = new byte[recordsize * recordsperfile];
+		fis.read(bytes);
+		File outfile = new File(outfilepath + i);
+		FileOutputStream fos = new FileOutputStream(outfile);
+		fos.write(bytes);
+		fos.close();
+		i++;
+	    }
+	    fis.close();
+
+	    splitfiles.put(filepath, i);
+
+	    return i;
+	}
+
+	// returns the number of files a file was parititioned into
+	// or -1 if it hasn't been split yet
+	public int splitNum(String file) {
+	    if(!splitfiles.contains(file)) {
+		return -1;
+	    }
+	    return (splitfiles.get(file)).intValue();
 	}
     }
-*/
-}
 }

@@ -6,8 +6,8 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Node {
 
-    private static Queue<Task> completed =
-        new ConcurrentLinkedQueue<Task>();
+    private static Queue<Pong> completed =
+        new ConcurrentLinkedQueue<Pong>();
 
     private static int availCores; // the number of available cores
 
