@@ -52,19 +52,18 @@ public class Master {
         int scnumdup = sc.nextInt(); // Number of times to duplicate each file
         int screcordsperfile = sc.nextInt(); // Records per file
 
+        int n = 1;
         while(sc.hasNext()) {
-            int i = 1;
             try {
-                // Discard the first line, as it has info on master
                 String hostname = sc.next();
                 int port = sc.nextInt();
                 Socket socket = new Socket(hostname, port);
-                nodes.put(i, new NodeInfo(socket));
-                System.out.println("Added node: " + i + " at host "+hostname+ " and port " + port);
+                nodes.put(n, new NodeInfo(socket));
+                System.out.println("Added node: " + n + " at host "+hostname+ " and port " + port);
             } catch (IOException e) {
                 System.out.println(e);
             }
-            i++;
+            n++;
         }
 
         // Initialize pings
@@ -76,7 +75,9 @@ public class Master {
         // Initialize the Distributed File System
         scnumdup = Math.min(scnumdup, nodes.size());
 
-        dfs = new DistFileSystem(scfileprefix, scnumdup, screcordsperfile);
+        dfs = new DistFileSystem(scfileprefix, screcordsperfile, scnumdup);
+
+System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: " + screcordsperfile);
 
         Heartbeat hb = new Heartbeat();
         Thread hbthread = new Thread(hb);
@@ -177,9 +178,12 @@ return;
 
     private static void distributeFile(String filepath, int recsize) throws FileNotFoundException, IOException {
         // split file
-        System.out.println("Splitting file...");
+        System.out.println("Splitting file " + filepath + " with recsize " + recsize);
 	dfs.splitFile(filepath, recsize);
 
+        System.out.println("Filepath = " + filepath);
+        System.out.println("Split num = " + dfs.splitNum(filepath));
+        System.out.println("Distributing file...");
         List<Integer> nodelist = new ArrayList<Integer>(nodes.keySet());
 	dfs.numdup = Math.min(nodelist.size(), dfs.numdup);
         // Send split files to ndoes
@@ -194,6 +198,7 @@ return;
     }
 
     private static void addPing(Integer node, Ping ping) {
+System.out.println("Adding ping " + ping.command() + " for Node " + node);
         Queue<Ping> queue = pings.get(node);
         queue.add(ping);
         pings.put(node, queue);
@@ -228,6 +233,16 @@ return;
                         } else {
                             ping = new Ping(Ping.Command.QUERY);
                         }
+// TODO: Remove?
+if(ping.command() != Ping.Command.QUERY) {
+System.out.println("Sending ping " + ping.command() + "to Node " + key);
+if(ping.command() == Ping.Command.TASK) {
+System.out.println("Task: " + ping.task().type() + " " + ping.task().infile());
+}
+if(ping.command() == Ping.Command.RECEIVE) {
+System.out.println("Sending file" + ping.filepath());
+}
+}
                         Message.send(socket, ping);
                         if(ping.command() == Ping.Command.RECEIVE) {
                             Message.sendFile(socket, ping.filepath());
@@ -236,7 +251,8 @@ return;
                         processReply(key, reply);
                     } catch(IOException e) {
                         System.out.println(e);
-                        nodes.remove(key);
+                        // Causes concurrency error
+                        // nodes.remove(key);
                     }
                 }
             }
@@ -296,7 +312,7 @@ return;
 	public int splitFile(String filepath, int recordsize) throws FileNotFoundException, IOException {
 	    File infile = new File(filepath);
 	    FileInputStream fis = new FileInputStream(infile);
-	    String outfilepath = filepath + filepath;
+	    String outfilepath = fileprefix + filepath;
 	    int i = 0;
 	    while(fis.available() > 0) {
 		byte[] bytes = new byte[recordsize * recordsperfile];
@@ -309,7 +325,9 @@ return;
 	    }
 	    fis.close();
 
+System.out.println("Split " + filepath + " into " + i);
 	    splitfiles.put(filepath, i);
+System.out.println("Splitfiles: " + splitfiles.toString());
 
 	    return i;
 	}
@@ -317,7 +335,7 @@ return;
 	// returns the number of files a file was parititioned into
 	// or -1 if it hasn't been split yet
 	public int splitNum(String file) {
-	    if(!splitfiles.contains(file)) {
+	    if(!splitfiles.containsKey(file)) {
 		return -1;
 	    }
 	    return (splitfiles.get(file)).intValue();
