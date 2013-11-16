@@ -1,6 +1,8 @@
 //tmp//
 2
 100
-unix2.andrew.cmu.edu 11273
-unix3.andrew.cmu.edu 11279
-unix4.andrew.cmu.edu 11271
+unix2.andrew.cmu.edu 11272
+unix3.andrew.cmu.edu 11273
+unix4.andrew.cmu.edu 11274
+unix5.andrew.cmu.edu 11275
+unix6.andrew.cmu.edu 11276

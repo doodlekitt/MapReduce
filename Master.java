@@ -12,12 +12,10 @@ public class Master {
     private static class NodeInfo {
         public Socket socket;
         public List<Task> tasks;
-        public List<String> files;
 
         NodeInfo(Socket socket) {
             this.socket = socket;
             this.tasks = new LinkedList<Task>();
-            this.files = new LinkedList<String>();
         }
     }
 
@@ -95,7 +93,8 @@ public class Master {
         // Initialize the Distributed File System
         scnumdup = Math.min(scnumdup, nodes.size());
 
-        dfs = new DistFileSystem(scfileprefix, screcordsperfile, scnumdup);
+        dfs = new DistFileSystem(nodes.keySet(),scfileprefix,screcordsperfile,
+                                 scnumdup);
 
 System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: " + screcordsperfile);
 
@@ -123,8 +122,7 @@ System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: "
 		} else if(command.startsWith("quit")) {
 		    break;
 		} else if(command.startsWith("list")) {
-		    // TODO
-
+		    System.out.println(dfs.files().toString());
 		} else if(command.startsWith("mapreduce")) {
 		    if(commandargs.length != 4) {
 			System.out.println("Expecting command of form:");
@@ -143,7 +141,7 @@ System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: "
                         // split the file and distribute the file to nodes
                         // if not already done for this file
                         if(dfs.splitNum(filepath) < 0) {
-                            distributeFile(filepath, reclen);
+                            dfs.distributeFile(filepath, reclen);
                         }
 
                         // add job to hashtable
@@ -151,6 +149,9 @@ System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: "
                         JobInfo jobinfo = new JobInfo(mapper,
                                                       dfs.splitNum(filepath));
                         jobs.put(jobnum, jobinfo);
+
+                        System.out.println("Processing request...");
+                        System.out.println("You are job number: " + jobnum);
 
                         // Create tasks for mapping on each file partition
                         for(int i = 0; i < dfs.splitNum(filepath); i++) {
@@ -178,59 +179,40 @@ System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: "
         hb.stop();
     }
 
-    private static void distributeFile(String filepath, int recsize) throws FileNotFoundException, IOException {
-        // split file
-        System.out.println("Splitting file " + filepath + " with recsize " + recsize);
-	dfs.splitFile(filepath, recsize);
-
-        System.out.println("Filepath = " + filepath);
-        System.out.println("Split num = " + dfs.splitNum(filepath));
-        System.out.println("Distributing file...");
-        List<Integer> nodelist = new ArrayList<Integer>(nodes.keySet());
-	dfs.numdup = Math.min(nodelist.size(), dfs.numdup);
-        // Send split files to ndoes
-	for(int i = 0; i < dfs.splitNum(filepath); i++) {
-            Ping ping = new Ping(Ping.Command.RECEIVE,
-			         dfs.fileprefix + filepath + i);
-	    Collections.shuffle(nodelist);
-            for(Integer node : nodelist.subList(0, dfs.numdup)) {
-                addPing(node, ping);
-                dfs.add(node, dfs.fileprefix + filepath + i);
-            }
-	}
-    }
-
     private static void assignTask(Task task) {
         Ping ping = new Ping(Ping.Command.TASK, task);
         List<Integer> candidates;
 
         if (task.infiles().size() == 1) {
             candidates = dfs.listFileLoc(task.infile());
-            Collections.shuffle(candidates);
-            // Assumes that candidate.size() > 0
-            // TODO: handle case when candidates size 0
-            addPing(candidates.get(0), ping);
         } else {
+            // choose a candidate that already has one of the infiles
+            // if possible
             candidates = new ArrayList<Integer>();
             for(String infile : task.infiles()) {
                 candidates.addAll(dfs.listFileLoc(infile));
             }
-            // TODO:Again, assumes that candidates > 0
-            Collections.shuffle(candidates);
-            Integer candidate = candidates.get(0);
-            for(String infile : task.infiles()) {
-                if(!dfs.hasFile(candidate, infile)) {
-                    ping = new Ping(Ping.Command.RECEIVE, infile);
-                    addPing(candidate, ping);
-                }
-            }
-            ping = new Ping(Ping.Command.TASK, task);
-            addPing(candidate, ping);
         }
+        if(candidates.size() == 0) {
+            candidates = new ArrayList<Integer>(nodes.keySet());
+        }
+
+        Collections.shuffle(candidates);
+        Integer candidate = candidates.get(0);
+
+        // Give candidate all files it doesn't have
+        for(String infile : task.infiles()) {
+            if(!dfs.hasFile(candidate, infile)) {
+                ping = new Ping(Ping.Command.RECEIVE, infile);
+                addPing(candidate, ping);
+            }
+        }
+        ping = new Ping(Ping.Command.TASK, task);
+        nodes.get(candidate).tasks.add(task);
+        addPing(candidate, ping);
     }
 
     private static void addPing(Integer node, Ping ping) {
-System.out.println("Adding ping " + ping.command() + " for Node " + node);
         Queue<Ping> queue = pings.get(node);
         queue.add(ping);
         pings.put(node, queue);
@@ -266,16 +248,6 @@ System.out.println("Adding ping " + ping.command() + " for Node " + node);
                         } else {
                             ping = new Ping(Ping.Command.QUERY);
                         }
-// TODO: Remove?
-if(ping.command() != Ping.Command.QUERY) {
-System.out.println("Sending ping " + ping.command() + " to Node " + key);
-if(ping.command() == Ping.Command.TASK) {
-System.out.println("Task: " + ping.task().type() + " " + ping.task().infile());
-}
-if(ping.command() == Ping.Command.RECEIVE) {
-System.out.println("Sending file" + ping.filepath());
-}
-}
                         Message.send(socket, ping);
                         if(ping.command() == Ping.Command.RECEIVE) {
                             Message.sendFile(socket, ping.filepath());
@@ -289,7 +261,11 @@ System.out.println("Sending file" + ping.filepath());
                 }
                 // Remove dead nodes
                 for(Integer corpse : deadnodes) {
-                    // TODO: Reassign tasks of the dead
+                    dfs.remove(corpse);
+                    // Reassign tasks
+                    for(Task task : nodes.get(corpse).tasks) {
+                        assignTask(task);
+                    }
                     nodes.remove(corpse);
                 }
             }
@@ -301,15 +277,13 @@ System.out.println("Sending file" + ping.filepath());
             return;
         // Otherwise, it is type TASK
         Task task = reply.task();
-        
+
         Message.receiveFile(nodes.get(node).socket, task.outfile());
         dfs.add(node, task.outfile());
 
         // The received task will be a reduce result
         // process it
         JobInfo info = jobs.get(task.jobnum());
-
-System.out.println("Info has jobnum " + task.jobnum() + " partnum " + info.partnum + "nummerged = " + info.nummerged);
 
         if(task.type() == Task.Type.REDUCE)
             info.nummerged++;
@@ -335,32 +309,53 @@ System.out.println("Info has jobnum " + task.jobnum() + " partnum " + info.partn
     public static class DistFileSystem {
 
 	private int recordsperfile;
-	public int numdup;
-	public String fileprefix;
+	private int numdup;
+        // The location where the file is stored.  Usually /tmp/
+	private String fileprefix;
+
+        private Hashtable<Integer, List<String>> files =
+            new Hashtable<Integer, List<String>>();
+
+        // Keeps track of the number of partitions each file is split into
 	private Hashtable<String, Integer> splitfiles =
 	    new Hashtable<String, Integer>();
 
-	DistFileSystem(String fileprefix, int rpf, int nd) {
+	// Constructor
+	DistFileSystem(Collection<Integer> nodes, String fileprefix, int rpf,
+                       int nd) {
+            for(Integer node : nodes) {
+                List<String> filelist = new ArrayList<String>();
+                files.put(node, filelist);
+            }
 	    this.fileprefix = fileprefix;
 	    this.recordsperfile = rpf;
 	    this.numdup = nd;
 	}
 
+	public Hashtable<Integer, List<String>> files() {
+	    return files;
+        }
+
 	// Assumes 'node' is already in 'nodes'
 	public void add (Integer node, String filename) {
-	    NodeInfo info = nodes.get(node);
-	    info.files.add(filename);
+	    List<String> filelist = files.get(node);
+	    filelist.add(filename);
+            files.put(node, filelist);
 	}
 
+        public void remove (Integer node) {
+            files.remove(node);
+        }
+
         public boolean hasFile(Integer node, String filename) {
-            return nodes.containsKey(node) &&
-                   nodes.get(node).files.contains(filename);
+            return files.containsKey(node) &&
+                   files.get(node).contains(filename);
         }
 
 	public List<Integer> listFileLoc(String filename) {
 	    List<Integer> nodelist = new LinkedList<Integer>();
 
-	    for(Integer node : nodes.keySet()) {
+	    for(Integer node : files.keySet()) {
 		if(hasFile(node, filename))
 		    nodelist.add(node);
 	    }
@@ -375,7 +370,6 @@ System.out.println("Info has jobnum " + task.jobnum() + " partnum " + info.partn
 	    String outfilepath = fileprefix + filepath;
 	    int i = 0;
 	    while(fis.available() > 0) {
-                // TODO: Read by record, not filesize
 		byte[] bytes = new byte[recordsize * recordsperfile];
 		fis.read(bytes);
 		File outfile = new File(outfilepath + i);
@@ -399,5 +393,23 @@ System.out.println("Info has jobnum " + task.jobnum() + " partnum " + info.partn
 	    }
 	    return (splitfiles.get(file)).intValue();
 	}
+
+        private void distributeFile(String filepath, int recsize) throws FileNotFoundException, IOException {
+        // split file
+        splitFile(filepath, recsize);
+
+        List<Integer> nodelist = new ArrayList<Integer>(nodes.keySet());
+        numdup = Math.min(nodelist.size(), numdup);
+        // Send split files to ndoes
+ for(int i = 0; i < splitNum(filepath); i++) {
+            Ping ping = new Ping(Ping.Command.RECEIVE,
+                                 fileprefix + filepath + i);
+            Collections.shuffle(nodelist);
+            for(Integer node : nodelist.subList(0, numdup)) {
+                addPing(node, ping);
+                add(node, fileprefix + filepath + i);
+            }
+        }
+    }
     }
 }
