@@ -27,7 +27,7 @@ public class Task implements java.io.Serializable {
     }
 
     // For REDUCE on multiple files
-    Task(int jobnum, Type type, MapClass mr, int recordlen, List<String> infile,
+    Task(int jobnum, Type type, MapClass mr,int recordlen,List<String> infiles,
          String outfile) {
         this.jobnum = jobnum;
         this.type = type;

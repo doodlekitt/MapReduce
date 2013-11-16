@@ -14,6 +14,7 @@ CLASSES = \
         Node.java \
         AddMap.java \
 	WordCount.java \
+        MRReader.java
 
 default: classes
 

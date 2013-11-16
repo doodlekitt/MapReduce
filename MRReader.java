@@ -14,6 +14,7 @@ public class MRReader{
 	try{
 	    ObjectInputStream oin = 
 		new ObjectInputStream(fin);
+            @SuppressWarnings("unchecked")
 	    Hashtable<Object, Object> ans = 
 		(Hashtable<Object, Object>) oin.readObject();
 	    String answer = ans.toString();

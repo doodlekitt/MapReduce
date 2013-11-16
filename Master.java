@@ -35,12 +35,12 @@ public class Master {
         public int partnum; // number of partitions for file
         MapClass mapreduce;
         Queue<String> fileparts;
-        public int recieved;
+        public int nummerged; // number of files merged so far
 
         JobInfo(MapClass mapreduce, int partnum) {
             this.mapreduce = mapreduce;
             this.partnum = partnum;
-            recieved = 0;
+            nummerged = 0;
             fileparts = new ConcurrentLinkedQueue<String>();
         }
     }
@@ -147,10 +147,10 @@ System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: "
                         }
 
                         // add job to hashtable
+                        jobnum++;
                         JobInfo jobinfo = new JobInfo(mapper,
                                                       dfs.splitNum(filepath));
                         jobs.put(jobnum, jobinfo);
-                        jobnum++;
 
                         // Create tasks for mapping on each file partition
                         for(int i = 0; i < dfs.splitNum(filepath); i++) {
@@ -202,13 +202,31 @@ System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: "
 
     private static void assignTask(Task task) {
         Ping ping = new Ping(Ping.Command.TASK, task);
+        List<Integer> candidates;
 
-        // TODO: Handle case with multiple infiles
-        List<Integer> candidates = dfs.listFileLoc(task.infile());
-        Collections.shuffle(candidates);
-        // Assumes that candidate.size() > 0
-        // TODO: handle case when candidates size 0
-        addPing(candidates.get(0), ping);
+        if (task.infiles().size() == 1) {
+            candidates = dfs.listFileLoc(task.infile());
+            Collections.shuffle(candidates);
+            // Assumes that candidate.size() > 0
+            // TODO: handle case when candidates size 0
+            addPing(candidates.get(0), ping);
+        } else {
+            candidates = new ArrayList<Integer>();
+            for(String infile : task.infiles()) {
+                candidates.addAll(dfs.listFileLoc(infile));
+            }
+            // TODO:Again, assumes that candidates > 0
+            Collections.shuffle(candidates);
+            Integer candidate = candidates.get(0);
+            for(String infile : task.infiles()) {
+                if(!dfs.hasFile(candidate, infile)) {
+                    ping = new Ping(Ping.Command.RECEIVE, infile);
+                    addPing(candidate, ping);
+                }
+            }
+            ping = new Ping(Ping.Command.TASK, task);
+            addPing(candidate, ping);
+        }
     }
 
     private static void addPing(Integer node, Ping ping) {
@@ -262,7 +280,7 @@ System.out.println("Sending file" + ping.filepath());
                         if(ping.command() == Ping.Command.RECEIVE) {
                             Message.sendFile(socket, ping.filepath());
                         }
-                        reply = (Pong)Message.recieve(socket);
+                        reply = (Pong)Message.receive(socket);
                         processReply(key, reply);
                     } catch(IOException e) {
                         System.out.println(e);
@@ -271,28 +289,45 @@ System.out.println("Sending file" + ping.filepath());
                 }
                 // Remove dead nodes
                 for(Integer corpse : deadnodes) {
+                    // TODO: Reassign tasks of the dead
                     nodes.remove(corpse);
                 }
             }
         }
     }
 
-    private static void processReply(Integer node, Pong reply) {
+    private static void processReply(Integer node, Pong reply) throws IOException {
         if(reply.type() == Pong.Type.EMPTY)
             return;
         // Otherwise, it is type TASK
         Task task = reply.task();
-        if(!reply.success()) {
-            // TODO: reassign task
+        
+        Message.receiveFile(nodes.get(node).socket, task.outfile());
+        dfs.add(node, task.outfile());
+
+        // The received task will be a reduce result
+        // process it
+        JobInfo info = jobs.get(task.jobnum());
+
+        if(info.nummerged == info.partnum - 1) {
+            System.out.println("Task " + task.jobnum() + " is complete!");
+            System.out.println("The output is available in file \"" + task.outfile() + "\"");
         } else {
-            // Add new file to dfs
-            dfs.add(node, task.outfile());
-            switch(task.type()) {
-                case MAPRED: break;
-                case REDUCE: break;
-                default: break;
+            if(task.type() == Task.Type.REDUCE)
+                info.nummerged++;
+            if(info.fileparts.isEmpty()) {
+                info.fileparts.add(task.outfile());
+            } else {
+                List<String> infiles = new ArrayList<String>(2);
+                infiles.add(info.fileparts.remove());
+                infiles.add(task.outfile());
+                Task newtask = new Task(task.jobnum(), Task.Type.REDUCE,
+                    task.mapreduce(), task.recordlen(), infiles,
+                    task.outfile() + info.nummerged);
+                assignTask(newtask);
             }
         }
+        jobs.put(task.jobnum(), info);
     }
 
     public static class DistFileSystem {
@@ -315,11 +350,16 @@ System.out.println("Sending file" + ping.filepath());
 	    info.files.add(filename);
 	}
 
+        public boolean hasFile(Integer node, String filename) {
+            return nodes.containsKey(node) &&
+                   nodes.get(node).files.contains(filename);
+        }
+
 	public List<Integer> listFileLoc(String filename) {
 	    List<Integer> nodelist = new LinkedList<Integer>();
 
 	    for(Integer node : nodes.keySet()) {
-		if(nodes.get(node).files.contains(filename))
+		if(hasFile(node, filename))
 		    nodelist.add(node);
 	    }
 	    return nodelist;

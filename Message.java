@@ -10,7 +10,7 @@ public class Message implements Serializable {
         os.writeObject(message);
     }
 
-    public static Object recieve(Socket socket) throws IOException {
+    public static Object receive(Socket socket) throws IOException {
         Object response = null;
 
         try {
@@ -43,7 +43,7 @@ public class Message implements Serializable {
     }
 
     // Reiceves the content of a file, line by line, and saves it locally
-    public static void recieveFile(Socket socket, String filepath) throws IOException, FileNotFoundException {
+    public static void receiveFile(Socket socket, String filepath) throws IOException, FileNotFoundException {
         System.out.println("Creating outfile and streams...");
         File file = new File(filepath);
         FileOutputStream fos = new FileOutputStream(file);
@@ -51,7 +51,7 @@ public class Message implements Serializable {
 
         // Recieve contents of file
         System.out.println("Receiving...");
-        byte[] bytes = (byte[])recieve(socket);
+        byte[] bytes = (byte[])receive(socket);
         System.out.println("Received");
 
         System.out.println("Writing...");

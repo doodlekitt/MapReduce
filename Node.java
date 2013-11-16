@@ -39,7 +39,7 @@ public class Node {
         Pong response = null;
         while(isRunning) {
             try {
-                ping = (Ping)Ping.recieve(master);
+                ping = (Ping)Ping.receive(master);
                 switch (ping.command()) {
                     case QUERY: response = new Pong();
                                 break;
@@ -53,7 +53,7 @@ public class Node {
                                break;
                     case RECEIVE: System.out.println("Receiving file "+
                                                      ping.filepath());
-                                  Ping.recieveFile(master, ping.filepath());
+                                  Ping.receiveFile(master, ping.filepath());
                                   break;
                     case KILL: isRunning = false;
                                break;
@@ -67,6 +67,9 @@ public class Node {
                     pong = pongs.remove();
                 }
                 Message.send(master, pong);
+                // send the finished product
+                if(pong.type() == Pong.Type.TASK && pong.success())
+                    Message.sendFile(master, pong.task().outfile());
             } catch (IOException e) {
                 System.out.println(e);
                 return;    
