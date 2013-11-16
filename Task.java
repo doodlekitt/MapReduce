@@ -6,6 +6,7 @@ public class Task implements java.io.Serializable {
         MAPRED, REDUCE;
     }
 
+    private int jobnum;
     private Type type;
     private MapClass mapreduce;
     private int recordlen;
@@ -14,7 +15,9 @@ public class Task implements java.io.Serializable {
 
     // Constructor
     // For MAPRED (on one file)
-    Task(Type type, MapClass mr, int recordlen, String infile, String outfile) {
+    Task(int jobnum, Type type, MapClass mr, int recordlen, String infile,
+         String outfile) {
+        this.jobnum = jobnum;
         this.type = type;
 	this.mapreduce = mr;
         this.recordlen = recordlen;
@@ -24,8 +27,9 @@ public class Task implements java.io.Serializable {
     }
 
     // For REDUCE on multiple files
-    Task(Type type, MapClass mr, int recordlen, List<String> infile,
+    Task(int jobnum, Type type, MapClass mr, int recordlen, List<String> infile,
          String outfile) {
+        this.jobnum = jobnum;
         this.type = type;
         this.mapreduce = mr;
         this.recordlen = recordlen;
@@ -34,6 +38,10 @@ public class Task implements java.io.Serializable {
     }
 
     // Accessors
+    public int jobnum() {
+        return jobnum;
+    }
+
     public Type type() {
         return type;
     }

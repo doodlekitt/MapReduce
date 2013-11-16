@@ -144,7 +144,7 @@ System.out.println(mapped.toString());
     out.flush();
 
     // Upon success, reduce it
-    Task redtask = new Task(Task.Type.REDUCE, task.mapreduce(),
+    Task redtask = new Task(task.jobnum(), Task.Type.REDUCE, task.mapreduce(),
         task.recordlen(), outfilepath, task.outfile());
     Reducer red = new Reducer(redtask);
     red.run();

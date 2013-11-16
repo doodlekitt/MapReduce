@@ -28,6 +28,26 @@ public class Master {
     // The distributed file system
     private static DistFileSystem dfs;
 
+    // Assign each task a unique number with tasknum
+    private static int jobnum = 0;
+
+    private static class JobInfo {
+        public int partnum; // number of partitions for file
+        MapClass mapreduce;
+        Queue<String> fileparts;
+        public int recieved;
+
+        JobInfo(MapClass mapreduce, int partnum) {
+            this.mapreduce = mapreduce;
+            this.partnum = partnum;
+            recieved = 0;
+            fileparts = new ConcurrentLinkedQueue<String>();
+        }
+    }
+
+    private static Hashtable<Integer, JobInfo> jobs =
+        new Hashtable<Integer, JobInfo>();
+
     public static void main(String[] args) {
         if(args.length != 1) {
             String error = "Expects command of the form:\n" +
@@ -83,26 +103,6 @@ System.out.println("Prefix: " + scfileprefix + " NumDup: " + scnumdup + " RPF: "
         Thread hbthread = new Thread(hb);
         hbthread.start();
 
-// TODO: Remove
-/*
-  try {
-dfs.splitFile("AddInput.txt", 2);
-
-NodeInfo node = nodes.get(1);
-
-String testfp = dfs.fileprefix + "AddInput.txt0";
-System.out.println("Sending file " + testfp);
-
-Ping ping = new Ping(Ping.Command.RECEIVE, testfp);
-
-Message.send(node.socket, ping);
-Message.sendFile(node.socket, testfp);
-
-} catch (Exception e) {
-System.out.println(e);
-return;
-}
-*/
 	// Listen to user commands
 	try{
 	    BufferedReader br =
@@ -146,18 +146,19 @@ return;
                             distributeFile(filepath, reclen);
                         }
 
+                        // add job to hashtable
+                        JobInfo jobinfo = new JobInfo(mapper,
+                                                      dfs.splitNum(filepath));
+                        jobs.put(jobnum, jobinfo);
+                        jobnum++;
+
                         // Create tasks for mapping on each file partition
                         for(int i = 0; i < dfs.splitNum(filepath); i++) {
-                            Task task = new Task(Task.Type.MAPRED,mapper,reclen,
+                            Task task = new Task(jobnum, Task.Type.MAPRED,
+                                mapper, reclen,
                                 dfs.fileprefix + filepath + i,
                                 dfs.fileprefix + filepath + i + "red");
-                            Ping ping = new Ping(Ping.Command.TASK, task);
-
-                            List<Integer> candidates =
-                                dfs.listFileLoc(dfs.fileprefix + filepath + i);
-                            Collections.shuffle(candidates);
-                            // Assumes that candidate.size() > 0
-                            addPing(candidates.get(0), ping);
+                            assignTask(task);
                         }
                         } catch (Exception e) {
                             System.out.println("Sorry, cannot mapreduce this, exception:");
@@ -199,6 +200,17 @@ return;
 	}
     }
 
+    private static void assignTask(Task task) {
+        Ping ping = new Ping(Ping.Command.TASK, task);
+
+        // TODO: Handle case with multiple infiles
+        List<Integer> candidates = dfs.listFileLoc(task.infile());
+        Collections.shuffle(candidates);
+        // Assumes that candidate.size() > 0
+        // TODO: handle case when candidates size 0
+        addPing(candidates.get(0), ping);
+    }
+
     private static void addPing(Integer node, Ping ping) {
 System.out.println("Adding ping " + ping.command() + " for Node " + node);
         Queue<Ping> queue = pings.get(node);
@@ -226,6 +238,7 @@ System.out.println("Adding ping " + ping.command() + " for Node " + node);
         public void run() {
             Pong reply = null;
             while(isRunning) {
+                Set<Integer> deadnodes = new HashSet<Integer>();
                 for(Integer key : nodes.keySet()) {
                     try{
                         Socket socket = nodes.get(key).socket;
@@ -237,7 +250,7 @@ System.out.println("Adding ping " + ping.command() + " for Node " + node);
                         }
 // TODO: Remove?
 if(ping.command() != Ping.Command.QUERY) {
-System.out.println("Sending ping " + ping.command() + "to Node " + key);
+System.out.println("Sending ping " + ping.command() + " to Node " + key);
 if(ping.command() == Ping.Command.TASK) {
 System.out.println("Task: " + ping.task().type() + " " + ping.task().infile());
 }
@@ -253,9 +266,12 @@ System.out.println("Sending file" + ping.filepath());
                         processReply(key, reply);
                     } catch(IOException e) {
                         System.out.println(e);
-                        // Causes concurrency error
-                        // nodes.remove(key);
+                        deadnodes.add(key);
                     }
+                }
+                // Remove dead nodes
+                for(Integer corpse : deadnodes) {
+                    nodes.remove(corpse);
                 }
             }
         }
