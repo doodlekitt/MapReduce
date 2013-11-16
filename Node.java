@@ -147,7 +147,7 @@ System.out.println(mapped.toString());
     out.flush();
 
     // Upon success, reduce it
-    Task redtask = new Task(task.jobnum(), Task.Type.REDUCE, task.mapreduce(),
+    Task redtask = new Task(task.jobnum(), task.type(), task.mapreduce(),
         task.recordlen(), outfilepath, task.outfile());
     Reducer red = new Reducer(redtask);
     red.run();
@@ -209,7 +209,11 @@ public void run() {
         List<Object> values = new ArrayList<Object>();
         for(Hashtable<Object, List<Object>> table : tables) {
             if(table.containsKey(key)) {
-                values.addAll(table.get(key));
+                if(task.type() == Task.Type.MAPRED) {
+                    values.addAll(table.get(key));
+                } else {
+                    values.add(table.get(key));
+                }
             }
         }
 

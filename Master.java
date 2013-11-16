@@ -309,12 +309,14 @@ System.out.println("Sending file" + ping.filepath());
         // process it
         JobInfo info = jobs.get(task.jobnum());
 
+System.out.println("Info has jobnum " + task.jobnum() + " partnum " + info.partnum + "nummerged = " + info.nummerged);
+
+        if(task.type() == Task.Type.REDUCE)
+            info.nummerged++;
         if(info.nummerged == info.partnum - 1) {
             System.out.println("Task " + task.jobnum() + " is complete!");
             System.out.println("The output is available in file \"" + task.outfile() + "\"");
         } else {
-            if(task.type() == Task.Type.REDUCE)
-                info.nummerged++;
             if(info.fileparts.isEmpty()) {
                 info.fileparts.add(task.outfile());
             } else {
@@ -326,8 +328,8 @@ System.out.println("Sending file" + ping.filepath());
                     task.outfile() + info.nummerged);
                 assignTask(newtask);
             }
+            jobs.put(task.jobnum(), info);
         }
-        jobs.put(task.jobnum(), info);
     }
 
     public static class DistFileSystem {
