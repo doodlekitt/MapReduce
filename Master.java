@@ -148,9 +148,9 @@ return;
 
                         // Create tasks for mapping on each file partition
                         for(int i = 0; i < dfs.splitNum(filepath); i++) {
-                            Task task = new Task(Task.Type.MAP, mapper, reclen,
+                            Task task = new Task(Task.Type.MAPRED,mapper,reclen,
                                 dfs.fileprefix + filepath + i,
-                                dfs.fileprefix + filepath + i + "map");
+                                dfs.fileprefix + filepath + i + "red");
                             Ping ping = new Ping(Ping.Command.TASK, task);
 
                             List<Integer> candidates =
@@ -272,7 +272,7 @@ System.out.println("Sending file" + ping.filepath());
             // Add new file to dfs
             dfs.add(node, task.outfile());
             switch(task.type()) {
-                case MAP: break;
+                case MAPRED: break;
                 case REDUCE: break;
                 default: break;
             }
@@ -317,6 +317,7 @@ System.out.println("Sending file" + ping.filepath());
 	    String outfilepath = fileprefix + filepath;
 	    int i = 0;
 	    while(fis.available() > 0) {
+                // TODO: Read by record, not filesize
 		byte[] bytes = new byte[recordsize * recordsperfile];
 		fis.read(bytes);
 		File outfile = new File(outfilepath + i);

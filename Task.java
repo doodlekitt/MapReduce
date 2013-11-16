@@ -3,7 +3,7 @@ import java.util.ArrayList;
 
 public class Task implements java.io.Serializable {
     public enum Type {
-        MAP, REDUCE;
+        MAPRED, REDUCE;
     }
 
     private Type type;
@@ -13,7 +13,7 @@ public class Task implements java.io.Serializable {
     private String outfile;
 
     // Constructor
-    // For MAP or REDUCE on one file
+    // For MAPRED (on one file)
     Task(Type type, MapClass mr, int recordlen, String infile, String outfile) {
         this.type = type;
 	this.mapreduce = mr;
@@ -46,7 +46,7 @@ public class Task implements java.io.Serializable {
         return recordlen;
     }
 
-    // For MAP
+    // For MAPRED
     // Assumes only one infile is provided
     public String infile() {
         return infiles.get(0);

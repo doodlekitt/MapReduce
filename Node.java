@@ -44,7 +44,7 @@ public class Node {
                     case QUERY: response = new Pong();
                                 break;
                     case TASK: Thread newthread = null;
-                               if(ping.task().type() == Task.Type.MAP) {
+                               if(ping.task().type() == Task.Type.MAPRED) {
                                    newthread = new Thread(new Mapper(ping.task()));
                                } else { // REDUCE
                                    newthread = new Thread(new Reducer(ping.task()));
@@ -106,9 +106,11 @@ public static class Mapper implements Runnable {
     Hashtable<Object, List<Object>> mapped =
         new Hashtable<Object, List<Object>>();
 
+    String outfilepath = task.infile() + "map";
+
     // Make reader and writer for file
     try {
-        File outfile = new File(task.outfile());
+        File outfile = new File(outfilepath);
         ObjectOutputStream out =
             new ObjectOutputStream(new FileOutputStream(outfile));
         FileInputStream fis = new FileInputStream(task.infile());
@@ -141,9 +143,11 @@ System.out.println(mapped.toString());
     out.writeObject(mapped);
     out.flush();
 
-    // Report success
-    Pong pong = new Pong(task, true);
-    pongs.add(pong);
+    // Upon success, reduce it
+    Task redtask = new Task(Task.Type.REDUCE, task.mapreduce(),
+        task.recordlen(), outfilepath, task.outfile());
+    Reducer red = new Reducer(redtask);
+    red.run();
 
     // Cleanup
         out.close();
@@ -158,7 +162,7 @@ System.out.println(mapped.toString());
 }
 }
 
-public static class Reducer implements Runnable{
+public static class Reducer implements Runnable {
 
 Task task;
 
@@ -213,6 +217,9 @@ public void run() {
         Map.Entry<Object, Object> result = task.mapreduce().reduce(entry);
         results.put(result.getKey(), result.getValue());
     }
+
+System.out.println("Finished reducing:");
+System.out.println(results.toString());
 
     // Write out final result
     try {
