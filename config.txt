@@ -1,5 +1,6 @@
 //tmp//
-1
+2
 100
-unix3.andrew.cmu.edu 11273
-unix4.andrew.cmu.edu 11279
+unix2.andrew.cmu.edu 11273
+unix3.andrew.cmu.edu 11279
+unix4.andrew.cmu.edu 11271
